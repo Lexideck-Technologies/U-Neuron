@@ -15,7 +15,25 @@
       "Bash(venv/Scripts/pytest tests/ --co -q)",
       "Bash(venv/Scripts/pytest tests/test_utensor.py -v)",
       "Bash(venv/Scripts/pytest tests/test_ulinear.py -v)",
-      "Bash(venv/Scripts/pytest tests/test_utensor.py tests/test_ulinear.py -v --tb=short)"
+      "Bash(venv/Scripts/pytest tests/test_utensor.py tests/test_ulinear.py -v --tb=short)",
+      "Bash(python -m pytest tests/test_norm.py -v --log-cli-level=INFO)",
+      "Bash(python -m pytest tests/test_activations.py -v --log-cli-level=INFO)",
+      "Bash(python -c \"from u_neuron.emission import u_emit, UEmission; print\\(''emission.py imports OK''\\)\")",
+      "Bash(python -m pytest tests/test_regularization.py -v)",
+      "Bash(pip install:*)",
+      "Bash(python -c \"import torch; print\\(torch.__version__\\)\")",
+      "Bash(PYTHONPATH=src python -c \"from u_neuron.emission import u_emit, UEmission; print\\(''emission.py imports OK''\\)\")",
+      "Bash(python -c \"import u_neuron\")",
+      "Bash(python -c \"import u_neuron; print\\(''ok''\\)\")",
+      "Bash(PYTHONPATH=src python -m pytest tests/test_emission.py -v)",
+      "Bash(python -m pip install -e . -q)",
+      "Bash(python -m pip install -e . --no-deps -q)",
+      "Bash(python -m pytest tests/test_norm.py -v)",
+      "Bash(python -m mypy src/u_neuron/regularization.py --python-version 3.10 --strict --ignore-missing-imports)",
+      "Bash(python -m ruff check src/u_neuron/regularization.py tests/test_regularization.py)",
+      "Bash(ruff check:*)",
+      "Bash(pip show:*)",
+      "Bash(python -m pytest tests/test_regularization.py -v --tb=short)"
     ]
   }
 }

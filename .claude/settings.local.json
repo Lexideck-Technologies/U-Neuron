@@ -54,7 +54,21 @@
       "Bash(python -c \"import torchvision; print\\(torchvision.__version__\\)\")",
       "Bash(pytest tests/ -q)",
       "Bash(pytest tests/ -q --no-header)",
-      "Bash(python benchmarks/ood_detection.py)"
+      "Bash(python benchmarks/ood_detection.py)",
+      "Bash(python benchmarks/quantum_tomography.py --n-samples 300 --epochs 5 --hidden 32)",
+      "Bash(python benchmarks/quantum_tomography.py --n-samples 400 --epochs 8 --hidden 32)",
+      "Bash(python -m ruff check benchmarks/quantum_tomography.py)",
+      "Bash(source .venv/Scripts/activate)",
+      "Bash(.venv/Scripts/python.exe -m ruff check benchmarks/quantum_tomography.py)",
+      "Bash(venv/Scripts/ruff.exe check:*)",
+      "Bash(venv/Scripts/python.exe benchmarks/quantum_tomography.py --n-samples 400 --epochs 5 --hidden 64)",
+      "Bash(venv/Scripts/python.exe benchmarks/mnist_compression.py --lambdas 0 0.01 --epochs 3 --hidden 64)",
+      "Bash(pytest tests/test_regularization.py -v)",
+      "Bash(python -m pytest tests/ -v)",
+      "Bash(python benchmarks/quantum_tomography.py)",
+      "Bash(python -c \":*)",
+      "Bash(python benchmarks/quantum_tomography.py --hidden 16)",
+      "Bash(python benchmarks/quantum_tomography.py --hidden 8)"
     ]
   }
 }

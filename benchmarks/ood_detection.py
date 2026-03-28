@@ -131,12 +131,12 @@ def load_data(
 class UNeuronClassifier(nn.Module):
     """U-Neuron classifier: PCA features → 10-class softmax."""
 
-    def __init__(self, n_features: int, hidden: int = 128) -> None:
+    def __init__(self, n_features: int, hidden: int = 128, lambda_reg: float = 0.01) -> None:
         super().__init__()
         self.model = UModel(
             layer_sizes=[n_features, hidden, hidden // 2, 10],
             activation="crelu",
-            lambda_reg=0.01,
+            lambda_reg=lambda_reg,
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -169,25 +169,41 @@ class MCDropoutMLP(nn.Module):
 # Anomaly scoring
 # ---------------------------------------------------------------------------
 
-def get_eps_scores(model: UNeuronClassifier, loader: DataLoader) -> torch.Tensor:
-    """Extract mean ε from the final U-space layer as the anomaly score.
+def _forward_to_final_utensor(
+    model: UNeuronClassifier, loader: DataLoader,
+) -> list[UTensor]:
+    """Run the UModel forward pass up to (but not including) UEmission.
 
-    Replicates the UModel forward pass (lift → layers → activation) but stops
-    before UEmission so we can inspect the final UTensor's ε values.
-
-    Higher ε  ≡  more curvature / uncertainty  ≡  more likely OOD.
+    Returns a list of final-layer UTensors (one per batch).
     """
-    inner = model.model  # the underlying UModel
+    inner = model.model
     inner.eval()
-    scores = []
+    results: list[UTensor] = []
     with torch.no_grad():
         for x, _ in loader:
             z: UTensor = UTensor.from_classical(x)
             for layer in inner.layers:
                 z = inner.activation_fn(layer(z))
-            # Mean ε across channels for each sample
-            scores.append(z.eps.mean(dim=-1).cpu())
-    return torch.cat(scores)
+            results.append(z)
+    return results
+
+
+def get_eps_mean_scores(model: UNeuronClassifier, loader: DataLoader) -> torch.Tensor:
+    """Mean ε across channels as anomaly score.  Higher = more OOD."""
+    batches = _forward_to_final_utensor(model, loader)
+    return torch.cat([z.eps.mean(dim=-1).cpu() for z in batches])
+
+
+def get_eps_var_scores(model: UNeuronClassifier, loader: DataLoader) -> torch.Tensor:
+    """Variance of ε across channels as anomaly score.  Higher = more OOD."""
+    batches = _forward_to_final_utensor(model, loader)
+    return torch.cat([z.eps.var(dim=-1).cpu() for z in batches])
+
+
+def get_eps_max_scores(model: UNeuronClassifier, loader: DataLoader) -> torch.Tensor:
+    """Max ε across channels as anomaly score.  Higher = more OOD."""
+    batches = _forward_to_final_utensor(model, loader)
+    return torch.cat([z.eps.max(dim=-1).values.cpu() for z in batches])
 
 
 def get_msp_scores(model: nn.Module, loader: DataLoader) -> torch.Tensor:
@@ -293,8 +309,10 @@ def run(args: argparse.Namespace) -> None:
     print(f"  OOD (CIFAR-100 test):    {len(ood_loader.dataset):,} samples\n")  # type: ignore[arg-type]
 
     models_cfg = [
-        ("U-Neuron",      UNeuronClassifier(args.n_pca, hidden=args.hidden), True),
-        ("MC-Dropout MLP", MCDropoutMLP(args.n_pca, hidden=args.hidden),      False),
+        ("U-Neuron", UNeuronClassifier(
+            args.n_pca, hidden=args.hidden, lambda_reg=args.lambda_reg
+        ), True),
+        ("MC-Dropout MLP", MCDropoutMLP(args.n_pca, hidden=args.hidden), False),
     ]
 
     trained: dict[str, nn.Module] = {}
@@ -335,8 +353,12 @@ def run(args: argparse.Namespace) -> None:
     assert isinstance(un_model, UNeuronClassifier)
     assert isinstance(mc_model, MCDropoutMLP)
 
-    eps_in = get_eps_scores(un_model, in_loader)
-    eps_ood = get_eps_scores(un_model, ood_loader)
+    eps_mean_in = get_eps_mean_scores(un_model, in_loader)
+    eps_mean_ood = get_eps_mean_scores(un_model, ood_loader)
+    eps_var_in = get_eps_var_scores(un_model, in_loader)
+    eps_var_ood = get_eps_var_scores(un_model, ood_loader)
+    eps_max_in = get_eps_max_scores(un_model, in_loader)
+    eps_max_ood = get_eps_max_scores(un_model, ood_loader)
 
     msp_in = get_msp_scores(un_model, in_loader)
     msp_ood = get_msp_scores(un_model, ood_loader)
@@ -344,27 +366,37 @@ def run(args: argparse.Namespace) -> None:
     mc_in = get_mc_dropout_scores(mc_model, in_loader, n_mc=args.n_mc)
     mc_ood = get_mc_dropout_scores(mc_model, ood_loader, n_mc=args.n_mc)
 
-    auroc_eps = compute_auroc(eps_in, eps_ood)
+    auroc_eps_mean = compute_auroc(eps_mean_in, eps_mean_ood)
+    auroc_eps_var = compute_auroc(eps_var_in, eps_var_ood)
+    auroc_eps_max = compute_auroc(eps_max_in, eps_max_ood)
     auroc_msp = compute_auroc(msp_in, msp_ood)
     auroc_mc = compute_auroc(mc_in, mc_ood)
 
     # ε statistics
-    eps_in_mean = eps_in.mean().item()
-    eps_ood_mean = eps_ood.mean().item()
+    em_in = eps_mean_in.mean().item()
+    em_ood = eps_mean_ood.mean().item()
+    ev_in = eps_var_in.mean().item()
+    ev_ood = eps_var_ood.mean().item()
     print(
-        f"\n  ε distribution (U-Neuron, final layer):\n"
-        f"    In-dist  (CIFAR-10):  mean={eps_in_mean:.4e}  std={eps_in.std().item():.4e}\n"
-        f"    OOD      (CIFAR-100): mean={eps_ood_mean:.4e}  std={eps_ood.std().item():.4e}\n"
-        f"    Ratio OOD/in:         {eps_ood_mean / (eps_in_mean + 1e-12):.3f}×\n"
+        f"\n  ε distribution (U-Neuron, final layer, lambda_reg={args.lambda_reg}):\n"
+        f"    In-dist  (CIFAR-10):  mean={em_in:.4e}  std={eps_mean_in.std().item():.4e}\n"
+        f"    OOD      (CIFAR-100): mean={em_ood:.4e}  std={eps_mean_ood.std().item():.4e}\n"
+        f"    Ratio OOD/in (mean):  {em_ood / (em_in + 1e-12):.3f}×\n"
+        f"    In-dist  var(ε):      mean={ev_in:.4e}\n"
+        f"    OOD      var(ε):      mean={ev_ood:.4e}\n"
+        f"    Ratio OOD/in (var):   {ev_ood / (ev_in + 1e-12):.3f}×\n"
     )
 
     # Summary table
     print("=" * 60)
-    print("RESULTS — OOD Detection (CIFAR-10 vs CIFAR-100)")
+    print(f"RESULTS — OOD Detection (CIFAR-10 vs CIFAR-100)  [lambda_reg={args.lambda_reg}]")
     print("=" * 60)
     print(f"  {'Method':<28}  {'Accuracy':>9}  {'AUROC':>7}")
     print(f"  {'-' * 48}")
-    print(f"  {'U-Neuron  (ε score)':<28}  {accuracies['U-Neuron']:>9.3f}  {auroc_eps:>7.3f}")
+    acc_un = accuracies["U-Neuron"]
+    print(f"  {'U-Neuron  (eps mean)':<28}  {acc_un:>9.3f}  {auroc_eps_mean:>7.3f}")
+    print(f"  {'U-Neuron  (eps variance)':<28}  {acc_un:>9.3f}  {auroc_eps_var:>7.3f}")
+    print(f"  {'U-Neuron  (eps max)':<28}  {acc_un:>9.3f}  {auroc_eps_max:>7.3f}")
     print(f"  {'U-Neuron  (MSP baseline)':<28}  {accuracies['U-Neuron']:>9.3f}  {auroc_msp:>7.3f}")
     print(f"  {'MC-Dropout MLP':<28}  {accuracies['MC-Dropout MLP']:>9.3f}  {auroc_mc:>7.3f}")
     print("=" * 60)
@@ -400,6 +432,10 @@ def parse_args() -> argparse.Namespace:
     p.add_argument(
         "--lr", type=float, default=1e-3,
         help="Adam learning rate (default: 1e-3)",
+    )
+    p.add_argument(
+        "--lambda-reg", type=float, default=0.01,
+        help="Landauer regularizer weight for U-Neuron (default: 0.01; set 0.0 to disable)",
     )
     p.add_argument(
         "--n-mc", type=int, default=20,

@@ -193,6 +193,129 @@ Invariants 5 and 6 are the key **anti-confabulation checks** — they prove the 
 
 ---
 
+## Benchmarks
+
+Four industry-relevant benchmarks validate specific U-Neuron properties. All require only the base install; MNIST and CIFAR datasets download automatically on first run.
+
+```bash
+# Install torchvision first (required by benchmarks B and E)
+pip install torchvision
+```
+
+---
+
+### Benchmark B — k-Space Reconstruction (fastMRI-style)
+
+Reconstructs magnitude images from undersampled complex k-space measurements.
+Tests whether ULinear's algebraic I/Q coupling improves on treating real and imaginary parts as independent channels.
+
+```bash
+python benchmarks/kspace_reconstruction.py
+```
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--n-samples` | 1500 | Number of synthetic phantom images |
+| `--image-size` | 16 | Image height/width in pixels |
+| `--acceleration` | 2 | k-space under-sampling factor |
+| `--hidden` | 256 | Hidden layer width |
+| `--epochs` | 40 | Training epochs |
+| `--batch-size` | 64 | Batch size |
+| `--lr` | 1e-3 | Adam learning rate |
+| `--seed` | 42 | Random seed |
+
+```bash
+# Larger images, more aggressive under-sampling
+python benchmarks/kspace_reconstruction.py --image-size 32 --acceleration 4 --epochs 80
+```
+
+---
+
+### Benchmark D — Out-of-Distribution Detection
+
+Uses CIFAR-10 as in-distribution and CIFAR-100 / SVHN as OOD. Tests whether the ε fiber naturally tracks epistemic uncertainty without any OOD supervision.
+
+```bash
+python benchmarks/ood_detection.py
+```
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--n-pca` | 128 | PCA components (applied to flattened CIFAR pixels) |
+| `--hidden` | 256 | Hidden layer width |
+| `--epochs` | 30 | Training epochs |
+| `--batch-size` | 256 | Batch size |
+| `--lr` | 1e-3 | Adam learning rate |
+| `--lambda-reg` | 0.01 | Landauer regularization weight |
+| `--data-dir` | `./data` | Directory for CIFAR cache |
+| `--seed` | 42 | Random seed |
+
+```bash
+# Higher Landauer weight, more PCA dimensions
+python benchmarks/ood_detection.py --lambda-reg 0.1 --n-pca 256 --epochs 50
+```
+
+---
+
+### Benchmark E — MNIST Landauer Compression Sweep
+
+Sweeps the Landauer regularization weight λ across multiple U-Neuron configurations on PCA-reduced MNIST. Measures per-layer ε compression and linear-probe accuracy (a proxy for I(Y;Z)).
+
+```bash
+python benchmarks/mnist_compression.py
+```
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--lambdas` | `0 0.001 0.01 0.1` | Space-separated λ values to sweep |
+| `--n-pca` | 64 | PCA components (784 → n_pca) |
+| `--hidden` | 256 | First hidden layer width |
+| `--epochs` | 20 | Training epochs per configuration |
+| `--batch-size` | 256 | Batch size |
+| `--lr` | 1e-3 | Adam learning rate |
+| `--data-dir` | `./data` | Directory for MNIST cache |
+| `--seed` | 42 | Random seed |
+
+```bash
+# Finer sweep with more epochs
+python benchmarks/mnist_compression.py --lambdas 0 0.0001 0.001 0.01 0.1 1.0 --epochs 40
+```
+
+---
+
+### Benchmark F — Quantum State Tomography
+
+Denoises Pauli measurements to recover quantum state Pauli expectation vectors.
+Tests whether ε correlates with per-sample reconstruction difficulty (Pearson r) without any explicit uncertainty supervision.
+
+**Architecture note:** UEmission outputs √(x²+ε²) ≥ 0, so signed output requires a backbone+head design: `UModel → non-negative features → Linear + tanh → signed Pauli expectations ∈ (−1, 1)`.
+
+```bash
+python benchmarks/quantum_tomography.py
+```
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--n-qubits` | 1 | Number of qubits (1 or 2) |
+| `--noise-std` | 0.05 | Gaussian noise on Pauli measurements |
+| `--n-samples` | 5000 | Number of synthetic quantum states |
+| `--hidden` | 128 | Hidden layer width |
+| `--epochs` | 40 | Training epochs |
+| `--batch-size` | 128 | Batch size |
+| `--lr` | 1e-3 | Adam learning rate |
+| `--noise-sweep` | off | Run additional sweep over noise levels [0, 0.02, 0.05, 0.10, 0.20] |
+| `--seed` | 42 | Random seed |
+
+```bash
+# 2-qubit system with high noise + noise sweep
+python benchmarks/quantum_tomography.py --n-qubits 2 --noise-std 0.10 --noise-sweep
+
+# Quick smoke test
+python benchmarks/quantum_tomography.py --n-samples 400 --epochs 5 --hidden 64
+```
+
+---
+
 ## Development
 
 ```bash

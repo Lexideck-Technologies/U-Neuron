@@ -6,11 +6,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **U-Neuron** implements the **ROUND (Relativistic Operators in U-Number Dynamics)** framework — a novel PyTorch library for neuronal computation based on complex-valued U-numbers and information-theoretic learning bounds. The two spec documents are the canonical source of truth; all code must match their formulas exactly.
 
-**Current state**: Specification-only. No source code exists yet. Implementation builds from the specs.
+**Current state**: v0.1.0 implemented. All source modules, tests (82 total, 10 invariants), and verification gates passing.
 
 ## Commands
-
-These commands apply once the project scaffold exists:
 
 ```bash
 # Install in editable mode
@@ -23,16 +21,16 @@ pytest tests/ -v
 pytest tests/test_invariants.py -v
 
 # Run a single test by name
-pytest tests/test_utensor.py::test_eps_floor -v
+pytest tests/test_utensor.py::test_eps_floor_clamping -v
 
 # Type checking
-mypy src/round/
+mypy src/u_neuron/
 
 # Linting
 ruff check src/ tests/
 
 # Full validation (must all pass before a feature is complete)
-pytest tests/ -v && mypy src/round/ && ruff check src/ tests/
+pytest tests/ -v && mypy src/u_neuron/ && ruff check src/ tests/
 ```
 
 ## Specification Files
@@ -40,10 +38,10 @@ pytest tests/ -v && mypy src/round/ && ruff check src/ tests/
 - [ROUND_Foundational_Specification.md](ROUND_Foundational_Specification.md) — mathematical foundations, U-space algebra, 10 invariants, PyTorch harness constraints
 - [u-neuron-pytorch.md](u-neuron-pytorch.md) — implementation spec: features F-RD01–F-RD07, design principles DP1–DP7, anti-patterns, success criteria
 
-## Planned Source Layout
+## Source Layout
 
 ```
-src/round/
+src/u_neuron/
 ├── __init__.py          # Public API exports
 ├── utensor.py           # UTensor: paired (x, ε) tensors
 ├── ulinear.py           # ULinear: complex multiplication layer
@@ -85,7 +83,7 @@ Collapses a `UTensor` to a classical `Tensor` at the network output: `emit = √
 Adds thermodynamic cost for state changes: `loss = λ · β · Σ|Δz|` where `|Δz| = √((Δx)² + (Δε)²)`. The regularizer tracks `UTensor` states after each layer and auto-resets after computing the loss.
 
 ### The 10 Mathematical Invariants
-Every invariant in `ROUND_Foundational_Specification.md` maps to a test in `test_invariants.py`. Invariants include: eps floor, type preservation, emission boundary, complex multiplication identity, cross-coupling (x→ε and ε→x), norm formula, emission formula, boundary enforcement, and gradient flow.
+Every invariant in `ROUND_Foundational_Specification.md` maps to a test in `test_invariants.py`. Invariants include: eps floor, type preservation, emission boundary, complex multiplication identity, cross-coupling (eps→x and x→eps), norm formula, emission formula, boundary enforcement, and gradient flow.
 
 ## Critical Anti-Patterns
 
@@ -111,7 +109,7 @@ Every invariant in `ROUND_Foundational_Specification.md` maps to a test in `test
 
 Build features in this order (each depends on the previous):
 
-1. Project scaffold (`pyproject.toml`, `src/round/__init__.py`, `tests/conftest.py`)
+1. Project scaffold (`pyproject.toml`, `src/u_neuron/__init__.py`, `tests/conftest.py`)
 2. F-RD01: `UTensor`
 3. F-RD02: `u_norm()`, `u_distance()`
 4. F-RD03: `ULinear`

@@ -43,7 +43,11 @@
       "Bash(venv/Scripts/python -m ruff check src/ tests/)",
       "Bash(venv/Scripts/python -m ruff check src/ tests/ --fix)",
       "Bash(venv/Scripts/python -m pytest tests/ -q --tb=short)",
-      "Bash(venv/Scripts/python -c \"from u_neuron import UTensor, ULinear, UEmission, UModel, u_norm, u_distance, u_emit, LandauerRegularizer, CReLU, modReLU; print\\(''OK''\\)\")"
+      "Bash(venv/Scripts/python -c \"from u_neuron import UTensor, ULinear, UEmission, UModel, u_norm, u_distance, u_emit, LandauerRegularizer, CReLU, modReLU; print\\(''OK''\\)\")",
+      "Bash(venv/Scripts/python -m pytest tests/test_invariants.py -v)",
+      "Bash(venv/Scripts/python -m pytest tests/ -v)",
+      "Bash(venv/Scripts/python -m ruff check tests/test_invariants.py --fix)",
+      "Bash(venv/Scripts/python -c \"from u_neuron import UTensor, ULinear, UEmission, UModel, u_norm, u_distance, u_emit, LandauerRegularizer, CReLU, modReLU; print\\(''Import surface OK''\\)\")"
     ]
   }
 }

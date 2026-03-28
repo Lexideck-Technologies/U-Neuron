@@ -139,13 +139,13 @@ def test_identity_layer() -> None:
 # Cross-coupling invariants (key anti-confabulation tests)
 # ---------------------------------------------------------------------------
 
-def test_cross_coupling_eps_changes_x_out() -> None:
-    """Perturbing eps must change x_out via the W_b @ eps cross-term.
+def test_cross_coupling_eps_perturb_changes_x() -> None:
+    """Perturbing eps must change x_out via the -W_b @ eps cross-term (spec §11.3.2).
 
     This proves the implementation uses complex multiplication, not two
     independent linear transforms.
     """
-    logger.info("=== Cross-coupling test: eps perturbation -> x_out change ===")
+    logger.info("=== Cross-coupling test: eps perturbation → x_out change ===")
     layer = ULinear(8, 8)
     # Force W_b to be non-negligible so the cross-term is detectable
     with torch.no_grad():
@@ -167,9 +167,9 @@ def test_cross_coupling_eps_changes_x_out() -> None:
     )
 
 
-def test_cross_coupling_x_changes_eps_out() -> None:
-    """Perturbing x must change eps_out via the W_b @ x cross-term."""
-    logger.info("=== Cross-coupling test: x perturbation -> eps_out change ===")
+def test_cross_coupling_x_perturb_changes_eps() -> None:
+    """Perturbing x must change eps_out via the +W_b @ x cross-term (spec §11.3.2)."""
+    logger.info("=== Cross-coupling test: x perturbation → eps_out change ===")
     layer = ULinear(8, 8)
     with torch.no_grad():
         assert layer.W_b is not None

@@ -2,7 +2,9 @@
 """U-space norm and distance functions. Foundational spec §2.1."""
 
 import logging
+
 import torch
+
 from u_neuron.utensor import UTensor
 
 logger = logging.getLogger(__name__)

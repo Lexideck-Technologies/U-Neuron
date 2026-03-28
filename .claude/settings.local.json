@@ -33,7 +33,17 @@
       "Bash(python -m ruff check src/u_neuron/regularization.py tests/test_regularization.py)",
       "Bash(ruff check:*)",
       "Bash(pip show:*)",
-      "Bash(python -m pytest tests/test_regularization.py -v --tb=short)"
+      "Bash(python -m pytest tests/test_regularization.py -v --tb=short)",
+      "Bash(venv/Scripts/python -m pytest tests/test_model.py -v)",
+      "Bash(venv/Scripts/python -m pytest tests/test_model.py tests/test_regularization.py -v)",
+      "Bash(venv/Scripts/python -m pytest tests/test_model.py -v --tb=short)",
+      "Bash(venv/Scripts/python -m pytest tests/ -v --tb=short)",
+      "Bash(venv/Scripts/python -m pytest tests/ --tb=short -q)",
+      "Bash(venv/Scripts/python -m mypy src/u_neuron/)",
+      "Bash(venv/Scripts/python -m ruff check src/ tests/)",
+      "Bash(venv/Scripts/python -m ruff check src/ tests/ --fix)",
+      "Bash(venv/Scripts/python -m pytest tests/ -q --tb=short)",
+      "Bash(venv/Scripts/python -c \"from u_neuron import UTensor, ULinear, UEmission, UModel, u_norm, u_distance, u_emit, LandauerRegularizer, CReLU, modReLU; print\\(''OK''\\)\")"
     ]
   }
 }

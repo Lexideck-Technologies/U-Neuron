@@ -1,9 +1,11 @@
 # tests/test_norm.py
 import logging
+
 import pytest
 import torch
+
+from u_neuron.norm import u_distance, u_norm
 from u_neuron.utensor import UTensor
-from u_neuron.norm import u_norm, u_distance
 
 logger = logging.getLogger(__name__)
 EPS_FLOOR = 1e-8
@@ -78,7 +80,7 @@ def test_u_distance_triangle_inequality():
     torch.manual_seed(42)
     violations = 0
     B, C = 5, 4
-    for i in range(100):
+    for _i in range(100):
         x_a = torch.rand(B, C)
         eps_a = torch.rand(B, C) + EPS_FLOOR
         x_b = torch.rand(B, C)

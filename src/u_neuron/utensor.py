@@ -98,7 +98,7 @@ class UTensor:
     # ------------------------------------------------------------------
 
     @classmethod
-    def from_classical(cls, x: Tensor, eps_init: float = 1e-3) -> "UTensor":
+    def from_classical(cls, x: Tensor, eps_init: float = 1e-3) -> UTensor:
         """Create a UTensor from a classical tensor, initializing eps to a constant.
 
         Args:
@@ -120,7 +120,7 @@ class UTensor:
         channels: int,
         device: torch.device | str = "cpu",
         dtype: torch.dtype = torch.float32,
-    ) -> "UTensor":
+    ) -> UTensor:
         """Create a UTensor of zeros (eps floor for the fiber component).
 
         Args:
@@ -142,16 +142,16 @@ class UTensor:
     # Instance methods
     # ------------------------------------------------------------------
 
-    def to(self, device: torch.device | str) -> "UTensor":
+    def to(self, device: torch.device | str) -> UTensor:
         """Return a new UTensor with both tensors moved to *device*."""
         logger.debug("UTensor.to: moving from %s to %s", self.device, device)
         return UTensor(self.x.to(device), self.eps.to(device))
 
-    def detach(self) -> "UTensor":
+    def detach(self) -> UTensor:
         """Return a new UTensor with detached (no-grad) tensors."""
         return UTensor(self.x.detach(), self.eps.detach())
 
-    def clone(self) -> "UTensor":
+    def clone(self) -> UTensor:
         """Return a deep copy of this UTensor."""
         return UTensor(self.x.clone(), self.eps.clone())
 

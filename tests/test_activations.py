@@ -1,8 +1,10 @@
 # tests/test_activations.py
 import logging
+
 import torch
-from u_neuron.utensor import UTensor
+
 from u_neuron.activations import CReLU, modReLU
+from u_neuron.utensor import UTensor
 
 logger = logging.getLogger(__name__)
 EPS_FLOOR = 1e-8
@@ -23,7 +25,10 @@ def test_crelu_relu_zeros_negative_x():
     crelu = CReLU(activation="relu")
     z_out = crelu(z)
 
-    logger.info("x_out max=%.4f (expect 0.0), eps_out min=%.2e", z_out.x.max().item(), z_out.eps.min().item())
+    logger.info(
+        "x_out max=%.4f (expect 0.0), eps_out min=%.2e",
+        z_out.x.max().item(), z_out.eps.min().item(),
+    )
     assert (z_out.x == 0.0).all(), "All negative inputs should produce x_out=0 under ReLU"
     assert z_out.eps.min().item() >= EPS_FLOOR, "eps must never drop below EPS_FLOOR"
 
@@ -92,10 +97,12 @@ def test_crelu_gelu_variant():
 
 def test_crelu_unknown_activation_raises():
     """Constructing CReLU with an unknown activation name raises ValueError."""
-    logger.info("test_crelu_unknown_activation_raises: expecting ValueError for bad activation name")
+    logger.info(
+        "test_crelu_unknown_activation_raises: expecting ValueError for bad activation name"
+    )
     try:
         CReLU(activation="sigmoid")
-        assert False, "Expected ValueError was not raised"
+        raise AssertionError("Expected ValueError was not raised")
     except ValueError as exc:
         logger.info("Caught expected ValueError: %s", exc)
 
@@ -158,7 +165,9 @@ def test_modrelu_output_is_utensor():
 
 def test_modrelu_above_threshold_preserves_direction():
     """For large r >> threshold, scale ≈ 1 and x_out ≈ x_in."""
-    logger.info("test_modrelu_above_threshold_preserves_direction: large r, scale should approach 1")
+    logger.info(
+        "test_modrelu_above_threshold_preserves_direction: large r, scale should approach 1"
+    )
     # Large activations: r >> threshold=0.5
     x = torch.full((4, 8), fill_value=100.0)
     eps = torch.full((4, 8), fill_value=1e-3)

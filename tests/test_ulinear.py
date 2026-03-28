@@ -14,8 +14,8 @@ import pytest
 import torch
 import torch.nn as nn
 
-from u_neuron.utensor import UTensor, EPS_FLOOR
 from u_neuron.ulinear import ULinear
+from u_neuron.utensor import EPS_FLOOR, UTensor
 
 logger = logging.getLogger(__name__)
 

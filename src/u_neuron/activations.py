@@ -2,9 +2,11 @@
 """Complex-valued activation functions for U-space. F-RD02."""
 
 import logging
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
 from u_neuron.utensor import UTensor
 
 logger = logging.getLogger(__name__)

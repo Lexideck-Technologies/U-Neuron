@@ -6,8 +6,8 @@ import logging
 import torch
 import torch.nn as nn
 
-from u_neuron.utensor import UTensor
 import u_neuron.ulinear as _ulinear_mod  # module import to read live _DEPTH_COUNTER
+from u_neuron.utensor import UTensor
 
 logger = logging.getLogger(__name__)
 

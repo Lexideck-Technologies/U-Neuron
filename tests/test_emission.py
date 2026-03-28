@@ -4,9 +4,9 @@ import logging
 import pytest
 import torch
 
-from u_neuron.utensor import UTensor
-from u_neuron.emission import u_emit, UEmission
 import u_neuron.ulinear as _ulinear_mod
+from u_neuron.emission import UEmission, u_emit
+from u_neuron.utensor import UTensor
 
 logger = logging.getLogger(__name__)
 EPS_FLOOR = 1e-8

@@ -4,8 +4,8 @@ import logging
 import pytest
 import torch
 
-from u_neuron.utensor import UTensor
 from u_neuron.regularization import LandauerRegularizer
+from u_neuron.utensor import UTensor
 
 logger = logging.getLogger(__name__)
 EPS_FLOOR = 1e-8
@@ -144,7 +144,10 @@ def test_reg_auto_reset_after_compute() -> None:
     reg.record(make_utensor(x_val=0.0, eps_val=0.1))
     reg.record(make_utensor(x_val=1.0, eps_val=0.2))
     loss_first = reg.compute()
-    logger.info("loss_first=%.6f, states after compute=%d (expect 0)", loss_first.item(), len(reg._states))
+    logger.info(
+        "loss_first=%.6f, states after compute=%d (expect 0)",
+        loss_first.item(), len(reg._states),
+    )
     assert len(reg._states) == 0, "States list should be empty after compute()"
 
     loss_second = reg.compute()

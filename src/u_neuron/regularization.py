@@ -49,7 +49,19 @@ class LandauerRegularizer:
             self.reset()
             return torch.tensor(0.0)
 
-        pairs = list(zip(self._states, self._states[1:]))
+        # Only compare consecutive states with matching shapes; layers that change
+        # channel dimension produce non-comparable state spaces — skip those pairs.
+        pairs = [
+            (a, b) for a, b in zip(self._states, self._states[1:], strict=False)
+            if a.shape == b.shape
+        ]
+        if not pairs:
+            logger.info(
+                "LandauerRegularizer: no same-shape consecutive pairs, returning 0.0"
+            )
+            self.reset()
+            return torch.tensor(0.0)
+
         total: torch.Tensor = torch.zeros(1, device=self._states[0].x.device).squeeze()
         for a, b in pairs:
             total = total + torch.sqrt((b.x - a.x) ** 2 + (b.eps - a.eps) ** 2).sum()

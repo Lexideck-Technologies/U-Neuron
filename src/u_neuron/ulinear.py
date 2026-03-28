@@ -15,13 +15,12 @@ from __future__ import annotations
 
 import logging
 import math
-from typing import Optional
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from u_neuron.utensor import UTensor, EPS_FLOOR
+from u_neuron.utensor import EPS_FLOOR, UTensor
 
 logger = logging.getLogger(__name__)
 
@@ -156,9 +155,9 @@ class ULinear(nn.Module):
         self.constraint = constraint
 
         # Declare all parameter slots; only some are populated per constraint.
-        self.W_a: Optional[nn.Parameter] = None
-        self.W_b: Optional[nn.Parameter] = None
-        self.theta: Optional[nn.Parameter] = None
+        self.W_a: nn.Parameter | None = None
+        self.W_b: nn.Parameter | None = None
+        self.theta: nn.Parameter | None = None
 
         if constraint == "unitary":
             # Single real symmetric generator; W_a and W_b are derived at forward time.

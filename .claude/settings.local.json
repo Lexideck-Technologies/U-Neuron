@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git -C /c/Users/Admin/Documents/LocalCoding/U-Neuron/ log --oneline)",
+      "WebSearch",
+      "WebFetch(domain:arxiv.org)",
+      "WebFetch(domain:medium.com)",
+      "WebFetch(domain:subhadipmitra.com)",
+      "WebFetch(domain:github.com)",
+      "Bash(python -c \"import sys; print\\(sys.executable\\)\")",
+      "Bash(python -m venv venv)",
+      "Bash(venv/Scripts/pip install:*)",
+      "Bash(venv/Scripts/pip show:*)",
+      "Bash(venv/Scripts/python -c \"import u_neuron; print\\(''''import OK, version:'''', u_neuron.__version__\\)\")",
+      "Bash(venv/Scripts/pytest tests/ --co -q)",
+      "Bash(venv/Scripts/pytest tests/test_utensor.py -v)",
+      "Bash(venv/Scripts/pytest tests/test_ulinear.py -v)",
+      "Bash(venv/Scripts/pytest tests/test_utensor.py tests/test_ulinear.py -v --tb=short)"
+    ]
+  }
+}

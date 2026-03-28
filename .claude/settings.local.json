@@ -47,7 +47,14 @@
       "Bash(venv/Scripts/python -m pytest tests/test_invariants.py -v)",
       "Bash(venv/Scripts/python -m pytest tests/ -v)",
       "Bash(venv/Scripts/python -m ruff check tests/test_invariants.py --fix)",
-      "Bash(venv/Scripts/python -c \"from u_neuron import UTensor, ULinear, UEmission, UModel, u_norm, u_distance, u_emit, LandauerRegularizer, CReLU, modReLU; print\\(''Import surface OK''\\)\")"
+      "Bash(venv/Scripts/python -c \"from u_neuron import UTensor, ULinear, UEmission, UModel, u_norm, u_distance, u_emit, LandauerRegularizer, CReLU, modReLU; print\\(''Import surface OK''\\)\")",
+      "Bash(source venv/Scripts/activate)",
+      "Bash(python benchmarks/kspace_reconstruction.py --n-samples 200 --epochs 5 --hidden 64)",
+      "Bash(python -c \"import numpy; print\\(numpy.__version__\\)\")",
+      "Bash(python -c \"import torchvision; print\\(torchvision.__version__\\)\")",
+      "Bash(pytest tests/ -q)",
+      "Bash(pytest tests/ -q --no-header)",
+      "Bash(python benchmarks/ood_detection.py)"
     ]
   }
 }

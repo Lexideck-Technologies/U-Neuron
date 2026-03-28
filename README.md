@@ -218,7 +218,7 @@ pytest tests/ -v && mypy src/u_neuron/ && ruff check src/ tests/
 
 | Document | Purpose |
 |----------|---------|
-| [`ROUND_Foundational_Specification.md`](ROUND_Foundational_Specification.md) | Mathematical foundations, U-space algebra, invariants, PyTorch harness constraints |
+| [`U-NEURON_Foundational_Specification.md`](U-NEURON_Foundational_Specification.md) | Mathematical foundations, U-space algebra, invariants, PyTorch harness constraints |
 | [`u-neuron-pytorch.md`](u-neuron-pytorch.md) | Implementation spec: features F-RD01–F-RD07, design principles, anti-patterns, success criteria |
 | [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) | Build plan: execution waves, code templates, verification checklist |
 

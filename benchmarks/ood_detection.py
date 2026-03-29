@@ -134,7 +134,7 @@ class UNeuronClassifier(nn.Module):
     def __init__(self, n_features: int, hidden: int = 128, lambda_reg: float = 0.01, constraint: str = "general") -> None:
         super().__init__()
         self.model = UModel(
-            layer_sizes=[n_features, hidden, hidden // 2, 10],
+            layer_sizes=[n_features, hidden, hidden, 10],
             activation="crelu",
             lambda_reg=lambda_reg,
             constraint=constraint,
@@ -156,10 +156,10 @@ class MCDropoutMLP(nn.Module):
             nn.Linear(n_features, hidden),
             nn.ReLU(),
             nn.Dropout(p_drop),
-            nn.Linear(hidden, hidden // 2),
+            nn.Linear(hidden, hidden),
             nn.ReLU(),
             nn.Dropout(p_drop),
-            nn.Linear(hidden // 2, 10),
+            nn.Linear(hidden, 10),
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:

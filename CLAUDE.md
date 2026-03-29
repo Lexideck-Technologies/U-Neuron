@@ -8,6 +8,34 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Current state**: v0.1.0 implemented. All source modules, tests (82 total, 10 invariants), and verification gates passing.
 
+## Workflow Notes
+
+### Parallelization
+Run independent operations in separate terminals simultaneously to save time and tokens. Examples of parallelizable work:
+- `mypy` + `ruff` checks (no dependencies between them)
+- Running test files for unrelated modules (e.g. `test_utensor.py` and `test_regularization.py`)
+- Installing dependencies while writing code
+
+Always activate the venv before running any commands:
+```bash
+# Windows (bash shell)
+source .venv/Scripts/activate
+# or if using a named venv
+source venv/Scripts/activate
+```
+
+Spawn parallel terminals for independent long-running tasks (benchmarks, test suites) rather than running them sequentially.
+
+### Encoding
+This project runs on Windows where encoding issues are common. When special characters (Greek letters like `ε`, `λ`, `β`, math symbols like `√`, `·`, `Σ`, `Δ`) appear in source files, they may cause `UnicodeDecodeError` or display corruption depending on the terminal and file encoding.
+
+- **Proactively check**: if a file uses non-ASCII characters and a tool or script fails with an encoding error, offer to replace the symbols with ASCII-safe equivalents throughout the codebase.
+- **Prefer ASCII alternatives** in Python source code: `eps` instead of `ε`, `lambda_` instead of `λ`, `beta` instead of `β`, `sqrt` instead of `√`, `delta` instead of `Δ`.
+- **Spec/doc files** (`.md`) can keep the original symbols — encoding issues arise in `.py` files run by the interpreter.
+- When adding `# -*- coding: utf-8 -*-` headers does not resolve the issue, rename the variables instead.
+
+---
+
 ## Commands
 
 ```bash

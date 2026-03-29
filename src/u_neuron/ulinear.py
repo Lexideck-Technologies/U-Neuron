@@ -170,10 +170,15 @@ class ULinear(nn.Module):
             self.W_a = nn.Parameter(torch.empty(out_channels, in_channels))
             self.W_b = nn.Parameter(torch.empty(out_channels, in_channels))
             nn.init.kaiming_uniform_(self.W_a, a=math.sqrt(5))
-            nn.init.uniform_(self.W_b, -1e-3, 1e-3)  # infinitesimal scale per spec
+            # Use full-scale init so the imaginary channel is active from
+            # step 1.  The network learns scale separation during training.
+            # (See spec implementation note 2026-03-28.)
+            nn.init.xavier_uniform_(self.W_b)
 
         self.bias_x = nn.Parameter(torch.zeros(out_channels))
-        self.bias_eps = nn.Parameter(torch.full((out_channels,), 1e-2))
+        # Fan-in proportional init (matches Kaiming bias convention)
+        bound = 1.0 / math.sqrt(in_channels)
+        self.bias_eps = nn.Parameter(torch.empty(out_channels).uniform_(0.0, bound))
 
         logger.debug(
             "ULinear created: in=%d, out=%d, constraint=%s",
@@ -234,9 +239,10 @@ class ULinear(nn.Module):
             #   Im = W_a @ eps + W_b @ x  + bias_eps
             x_out = F.linear(z.x, W_a) - F.linear(z.eps, W_b) + self.bias_x
             eps_out = F.linear(z.eps, W_a) + F.linear(z.x, W_b) + self.bias_eps
-            eps_out = torch.clamp(eps_out, min=EPS_FLOOR)
+            # No clamp here — softplus in the activation handles positivity
+            # and allows gradients to flow through pre-activation negative eps.
 
-            result = UTensor(x_out, eps_out)
+            result = UTensor(x_out, eps_out, _skip_eps_clamp=True)
             logger.debug(
                 "ULinear.forward: out_shape=%s, eps_min=%.2e",
                 result.shape, result.eps.min().item(),

@@ -65,17 +65,21 @@ def test_output_shape_rectangular() -> None:
     logger.info("Rectangular output shape %s OK", out.shape)
 
 
-def test_output_eps_floor() -> None:
-    logger.info("Testing that output eps is always >= EPS_FLOOR")
+def test_output_eps_is_finite() -> None:
+    """ULinear now outputs pre-activation eps (can be negative).
+
+    The eps floor invariant is enforced by the activation (softplus),
+    not by ULinear.  Here we verify ULinear output is finite.
+    """
+    logger.info("Testing that ULinear output eps is finite (pre-activation)")
     layer = ULinear(8, 8)
-    floor_t = torch.tensor(EPS_FLOOR, dtype=torch.float32)
     for _ in range(20):
         z = make_utensor(16, 8)
         out = layer(z)
-        assert (out.eps >= floor_t).all(), (
-            f"eps floor violated: min={out.eps.min().item():.2e}"
+        assert torch.isfinite(out.eps).all(), (
+            f"eps contains non-finite values: min={out.eps.min().item():.2e}"
         )
-    logger.info("Output eps floor OK across 20 random inputs")
+    logger.info("Output eps finite OK across 20 random inputs")
 
 
 # ---------------------------------------------------------------------------
@@ -207,8 +211,7 @@ def test_doubly_stochastic_forward() -> None:
     z = make_utensor(4, 8)
     out = layer(z)
     assert out.shape == torch.Size([4, 8])
-    floor_t = out.eps.new_tensor(EPS_FLOOR)
-    assert (out.eps >= floor_t).all()
+    assert torch.isfinite(out.eps).all()
     logger.info("doubly_stochastic forward OK: out_shape=%s", out.shape)
 
 
@@ -225,8 +228,7 @@ def test_unitary_forward() -> None:
     z = make_utensor(4, 8)
     out = layer(z)
     assert out.shape == torch.Size([4, 8])
-    floor_t = out.eps.new_tensor(EPS_FLOOR)
-    assert (out.eps >= floor_t).all()
+    assert torch.isfinite(out.eps).all()
     logger.info("unitary forward OK: out_shape=%s", out.shape)
 
 

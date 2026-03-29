@@ -33,7 +33,7 @@ class UTensor:
 
     EPS_FLOOR: ClassVar[float] = 1e-8
 
-    def __init__(self, x: Tensor, eps: Tensor) -> None:
+    def __init__(self, x: Tensor, eps: Tensor, *, _skip_eps_clamp: bool = False) -> None:
         # --- dimensionality check ---
         if x.ndim != 2:
             raise ValueError(
@@ -69,14 +69,17 @@ class UTensor:
             raise ValueError("eps contains NaN or Inf values")
 
         # --- eps floor clamp ---
-        n_below = (eps < self.EPS_FLOOR).sum().item()
-        if n_below > 0:
-            logger.debug(
-                "UTensor: clamping %d eps values below EPS_FLOOR (%.2e) to floor",
-                n_below,
-                self.EPS_FLOOR,
-            )
-            eps = torch.clamp(eps, min=self.EPS_FLOOR)
+        # Skipped for internal pre-activation UTensors (ULinear output before
+        # activation).  The activation's softplus ensures final positivity.
+        if not _skip_eps_clamp:
+            n_below = (eps < self.EPS_FLOOR).sum().item()
+            if n_below > 0:
+                logger.debug(
+                    "UTensor: clamping %d eps values below EPS_FLOOR (%.2e) to floor",
+                    n_below,
+                    self.EPS_FLOOR,
+                )
+                eps = torch.clamp(eps, min=self.EPS_FLOOR)
 
         self.x: Tensor = x
         self.eps: Tensor = eps

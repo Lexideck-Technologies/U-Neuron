@@ -177,6 +177,7 @@ This is the expansion of `z' = w · z + b` where `w, z, b ∈ U`.
 **Initialization:**
 - `W_a`: Standard initialization (e.g., Xavier/Kaiming).
 - `W_b`: Initialized at infinitesimal scale (e.g., `1e-3`) to respect the paper's scale separation between standard and infinitesimal parts.
+  > **Implementation note (2026-03-28):** The "infinitesimal scale" guidance applies to the *mathematical* ε in U-space, not to the *learned parameter* W_b. In practice, initializing W_b at 1e-3 while W_a uses Kaiming scale (~0.08) creates an 80× asymmetry that causes bimodal convergence — some seeds never activate the imaginary channel. Symmetric initialization (e.g., Xavier for W_b) allows the network to *learn* the appropriate scale separation during training. The algebra is preserved regardless of init scale; only the optimization landscape changes.
 - `bias_eps`: Initialized to a small positive value (e.g., `1e-2`) to ensure the fiber starts "awake."
 
 ### 11.3.3 The Boundary: UEmission

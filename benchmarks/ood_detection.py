@@ -131,12 +131,13 @@ def load_data(
 class UNeuronClassifier(nn.Module):
     """U-Neuron classifier: PCA features → 10-class softmax."""
 
-    def __init__(self, n_features: int, hidden: int = 128, lambda_reg: float = 0.01) -> None:
+    def __init__(self, n_features: int, hidden: int = 128, lambda_reg: float = 0.01, constraint: str = "general") -> None:
         super().__init__()
         self.model = UModel(
             layer_sizes=[n_features, hidden, hidden // 2, 10],
             activation="crelu",
             lambda_reg=lambda_reg,
+            constraint=constraint,
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -311,7 +312,7 @@ def run(args: argparse.Namespace) -> None:
 
     models_cfg = [
         ("U-Neuron", UNeuronClassifier(
-            args.n_pca, hidden=args.hidden, lambda_reg=args.lambda_reg
+            args.n_pca, hidden=args.hidden, lambda_reg=args.lambda_reg, constraint=args.constraint
         ), True),
         ("MC-Dropout MLP", MCDropoutMLP(args.n_pca, hidden=args.hidden), False),
     ]
@@ -447,6 +448,11 @@ def parse_args() -> argparse.Namespace:
         help="Directory for CIFAR dataset cache (default: ./data)",
     )
     p.add_argument("--seed", type=int, default=42)
+    p.add_argument(
+        "--constraint", type=str, default="general",
+        choices=["general", "unitary", "doubly_stochastic"],
+        help="Weight manifold constraint (default: general)",
+    )
     return p.parse_args()
 
 

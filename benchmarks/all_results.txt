@@ -1,0 +1,742 @@
+GRAND SUMMARY -- All Benchmarks x All Constraints
+Total wall time: 623s (10.4 min)
+================================================================================
+
+--- quantum_tomography__general  (8.6s, rc=0) ---
+
+######################################################################
+# quantum_tomography [general]
+# CMD: C:\Users\Admin\Documents\LocalCoding\U-Neuron\venv\Scripts\python.exe C:\Users\Admin\Documents\LocalCoding\U-Neuron\benchmarks\quantum_tomography.py --constraint general
+######################################################################
+
+Generating quantum tomography dataset  (5000 samples, 1-qubit, noise std=0.05)...
+  Pauli operators: 3  (dim=2)
+  Task: denoise noisy Pauli measurements -> ideal expectations
+  Fidelity formula: F = (1 + r_pred . r_true) / 2
+
+============================================================
+  U-Neuron  (42,115 trainable parameters)
+============================================================
+  ep   8/40  task=0.00289  reg=0.03499  fidelity=0.9827  mse=0.00285  (1.0s)
+  ep  16/40  task=0.00255  reg=0.02762  fidelity=0.9838  mse=0.00308  (2.2s)
+  ep  24/40  task=0.00237  reg=0.02361  fidelity=0.9857  mse=0.00246  (3.1s)
+  ep  32/40  task=0.00227  reg=0.02194  fidelity=0.9865  mse=0.00234  (4.0s)
+  ep  40/40  task=0.00222  reg=0.02162  fidelity=0.9864  mse=0.00234  (4.9s)
+
+============================================================
+  MLP Baseline  (17,411 trainable parameters)
+============================================================
+  ep   8/40  task=0.00243  fidelity=0.9869  mse=0.00262  (0.3s)
+  ep  16/40  task=0.00218  fidelity=0.9888  mse=0.00231  (0.7s)
+  ep  24/40  task=0.00212  fidelity=0.9907  mse=0.00220  (1.0s)
+  ep  32/40  task=0.00194  fidelity=0.9916  mse=0.00204  (1.3s)
+  ep  40/40  task=0.00191  fidelity=0.9915  mse=0.00204  (1.6s)
+
+Probing per-layer eps statistics (U-Neuron)...
+
+  Per-layer eps diagnostics (one batch):
+    Layer 0: eps_mean=4.7932e-01,  eps_std=1.1864e-01
+    Layer 1: eps_mean=2.2269e-01,  eps_std=3.7984e-02
+    Layer 2: eps_mean=4.2046e-01,  eps_std=1.7853e-01
+
+Computing eps - reconstruction-error correlation...
+
+  eps (final U-space layer, test set):
+    mean = 4.2064e-01
+    std  = 7.3461e-03
+
+  Pearson r(eps, infidelity) = +0.3358  (r>0: eps tracks difficulty)
+
+============================================================
+RESULTS -- Quantum State Tomography (1-qubit, std=0.05)
+============================================================
+  Model                   Params   Fidelity         MSE
+  ----------------------------------------------------
+  U-Neuron                42,115     0.9864    0.002335
+  MLP Baseline            17,411     0.9915    0.002038
+============================================================
+
+  Fidelity gap (U-Neuron - MLP): -0.0051
+  Pearson r(eps, infidelity):    +0.3358
+
+Interpretation:
+  Fidelity = 1.0 means perfect reconstruction.  At non-zero noise the
+  gap between U-Neuron and MLP tests whether complex-valued coupling
+  better denoises the Pauli measurement signal.
+  Positive Pearson r confirms that eps is a calibrated uncertainty proxy.
+
+
+>>> Exit code: 0  Elapsed: 8.6s
+
+
+--- quantum_tomography__unitary  (18.0s, rc=0) ---
+
+######################################################################
+# quantum_tomography [unitary]
+# CMD: C:\Users\Admin\Documents\LocalCoding\U-Neuron\venv\Scripts\python.exe C:\Users\Admin\Documents\LocalCoding\U-Neuron\benchmarks\quantum_tomography.py --constraint unitary
+######################################################################
+
+Generating quantum tomography dataset  (5000 samples, 1-qubit, noise std=0.05)...
+  Pauli operators: 3  (dim=2)
+  Task: denoise noisy Pauli measurements -> ideal expectations
+  Fidelity formula: F = (1 + r_pred . r_true) / 2
+
+============================================================
+  U-Neuron  (25,731 trainable parameters)
+============================================================
+  ep   8/40  task=0.00390  reg=0.03934  fidelity=0.9714  mse=0.00383  (2.4s)
+  ep  16/40  task=0.00329  reg=0.03251  fidelity=0.9745  mse=0.00361  (5.0s)
+  ep  24/40  task=0.00316  reg=0.02864  fidelity=0.9760  mse=0.00321  (7.9s)
+  ep  32/40  task=0.00301  reg=0.02701  fidelity=0.9761  mse=0.00308  (10.2s)
+  ep  40/40  task=0.00298  reg=0.02669  fidelity=0.9764  mse=0.00305  (13.9s)
+
+============================================================
+  MLP Baseline  (17,411 trainable parameters)
+============================================================
+  ep   8/40  task=0.00241  fidelity=0.9885  mse=0.00245  (0.4s)
+  ep  16/40  task=0.00219  fidelity=0.9906  mse=0.00227  (0.9s)
+  ep  24/40  task=0.00201  fidelity=0.9918  mse=0.00207  (1.2s)
+  ep  32/40  task=0.00193  fidelity=0.9919  mse=0.00204  (1.6s)
+  ep  40/40  task=0.00189  fidelity=0.9920  mse=0.00200  (2.0s)
+
+Probing per-layer eps statistics (U-Neuron)...
+
+  Per-layer eps diagnostics (one batch):
+    Layer 0: eps_mean=4.9782e-01,  eps_std=1.4530e-01
+    Layer 1: eps_mean=1.6599e-01,  eps_std=3.9450e-02
+    Layer 2: eps_mean=6.0203e-01,  eps_std=7.5552e-02
+
+Computing eps - reconstruction-error correlation...
+
+  eps (final U-space layer, test set):
+    mean = 6.0245e-01
+    std  = 2.0405e-03
+
+  Pearson r(eps, infidelity) = +0.3053  (r>0: eps tracks difficulty)
+
+============================================================
+RESULTS -- Quantum State Tomography (1-qubit, std=0.05)
+============================================================
+  Model                   Params   Fidelity         MSE
+  ----------------------------------------------------
+  U-Neuron                25,731     0.9764    0.003051
+  MLP Baseline            17,411     0.9920    0.001996
+============================================================
+
+  Fidelity gap (U-Neuron - MLP): -0.0157
+  Pearson r(eps, infidelity):    +0.3053
+
+Interpretation:
+  Fidelity = 1.0 means perfect reconstruction.  At non-zero noise the
+  gap between U-Neuron and MLP tests whether complex-valued coupling
+  better denoises the Pauli measurement signal.
+  Positive Pearson r confirms that eps is a calibrated uncertainty proxy.
+
+
+>>> Exit code: 0  Elapsed: 18.0s
+
+
+--- quantum_tomography__doubly_stochastic  (14.7s, rc=0) ---
+
+######################################################################
+# quantum_tomography [doubly_stochastic]
+# CMD: C:\Users\Admin\Documents\LocalCoding\U-Neuron\venv\Scripts\python.exe C:\Users\Admin\Documents\LocalCoding\U-Neuron\benchmarks\quantum_tomography.py --constraint doubly_stochastic
+######################################################################
+
+Generating quantum tomography dataset  (5000 samples, 1-qubit, noise std=0.05)...
+  Pauli operators: 3  (dim=2)
+  Task: denoise noisy Pauli measurements -> ideal expectations
+  Fidelity formula: F = (1 + r_pred . r_true) / 2
+
+============================================================
+  U-Neuron  (42,115 trainable parameters)
+============================================================
+  ep   8/40  task=0.00379  reg=0.04066  fidelity=0.9723  mse=0.00376  (2.1s)
+  ep  16/40  task=0.00338  reg=0.03135  fidelity=0.9738  mse=0.00373  (4.2s)
+  ep  24/40  task=0.00310  reg=0.02690  fidelity=0.9767  mse=0.00318  (5.9s)
+  ep  32/40  task=0.00298  reg=0.02511  fidelity=0.9778  mse=0.00305  (8.2s)
+  ep  40/40  task=0.00292  reg=0.02477  fidelity=0.9777  mse=0.00304  (10.3s)
+
+============================================================
+  MLP Baseline  (17,411 trainable parameters)
+============================================================
+  ep   8/40  task=0.00243  fidelity=0.9869  mse=0.00262  (0.5s)
+  ep  16/40  task=0.00218  fidelity=0.9888  mse=0.00231  (0.9s)
+  ep  24/40  task=0.00212  fidelity=0.9907  mse=0.00220  (1.2s)
+  ep  32/40  task=0.00194  fidelity=0.9916  mse=0.00204  (1.5s)
+  ep  40/40  task=0.00191  fidelity=0.9915  mse=0.00204  (1.8s)
+
+Probing per-layer eps statistics (U-Neuron)...
+
+  Per-layer eps diagnostics (one batch):
+    Layer 0: eps_mean=4.4718e-01,  eps_std=1.1628e-01
+    Layer 1: eps_mean=1.5813e-01,  eps_std=7.7056e-02
+    Layer 2: eps_mean=6.9477e-01,  eps_std=7.9896e-02
+
+Computing eps - reconstruction-error correlation...
+
+  eps (final U-space layer, test set):
+    mean = 6.9488e-01
+    std  = 1.0717e-03
+
+  Pearson r(eps, infidelity) = +0.1219  (r>0: eps tracks difficulty)
+
+============================================================
+RESULTS -- Quantum State Tomography (1-qubit, std=0.05)
+============================================================
+  Model                   Params   Fidelity         MSE
+  ----------------------------------------------------
+  U-Neuron                42,115     0.9777    0.003042
+  MLP Baseline            17,411     0.9915    0.002038
+============================================================
+
+  Fidelity gap (U-Neuron - MLP): -0.0138
+  Pearson r(eps, infidelity):    +0.1219
+
+Interpretation:
+  Fidelity = 1.0 means perfect reconstruction.  At non-zero noise the
+  gap between U-Neuron and MLP tests whether complex-valued coupling
+  better denoises the Pauli measurement signal.
+  Positive Pearson r confirms that eps is a calibrated uncertainty proxy.
+
+
+>>> Exit code: 0  Elapsed: 14.7s
+
+
+--- kspace_reconstruction__general  (11.4s, rc=0) ---
+
+######################################################################
+# kspace_reconstruction [general]
+# CMD: C:\Users\Admin\Documents\LocalCoding\U-Neuron\venv\Scripts\python.exe C:\Users\Admin\Documents\LocalCoding\U-Neuron\benchmarks\kspace_reconstruction.py --constraint general
+######################################################################
+
+Generating synthetic k-space dataset  (1500 samples, 16×16, 2× acceleration)...
+  Input features (Re+Im k-space):  512
+  Output pixels:                   256
+  Approximate sampling fraction:   56%
+
+============================================================
+  U-Neuron  (525,824 trainable parameters)
+============================================================
+  ep   8/40  train_task=0.01300  reg=0.02657  test_mse=0.01379  test_psnr=18.61 dB  (1.6s)
+  ep  16/40  train_task=0.00882  reg=0.02372  test_mse=0.01157  test_psnr=19.37 dB  (2.7s)
+  ep  24/40  train_task=0.00621  reg=0.02132  test_mse=0.01002  test_psnr=19.99 dB  (3.8s)
+  ep  32/40  train_task=0.00534  reg=0.01999  test_mse=0.00979  test_psnr=20.09 dB  (4.7s)
+  ep  40/40  train_task=0.00511  reg=0.01950  test_mse=0.00970  test_psnr=20.13 dB  (7.7s)
+
+============================================================
+  MLP Baseline  (262,912 trainable parameters)
+============================================================
+  ep   8/40  train_task=0.00640  test_mse=0.00968  test_psnr=20.14 dB  (0.3s)
+  ep  16/40  train_task=0.00341  test_mse=0.00932  test_psnr=20.30 dB  (0.5s)
+  ep  24/40  train_task=0.00205  test_mse=0.00922  test_psnr=20.35 dB  (0.7s)
+  ep  32/40  train_task=0.00160  test_mse=0.00919  test_psnr=20.36 dB  (1.0s)
+  ep  40/40  train_task=0.00150  test_mse=0.00922  test_psnr=20.35 dB  (1.2s)
+
+============================================================
+RESULTS — k-Space Reconstruction
+============================================================
+  Model                   Params         MSE   PSNR (dB)
+  ------------------------------------------------------
+  U-Neuron               525,824     0.00970       20.13
+  MLP Baseline           262,912     0.00922       20.35
+============================================================
+
+Note: PSNR difference reflects the advantage of complex-valued coupling
+      (ULinear) vs treating real/imaginary k-space as independent channels.
+      Landauer regularization also visible in per-epoch reg_loss column.
+
+
+>>> Exit code: 0  Elapsed: 11.4s
+
+
+--- kspace_reconstruction__unitary  (70.6s, rc=0) ---
+
+######################################################################
+# kspace_reconstruction [unitary]
+# CMD: C:\Users\Admin\Documents\LocalCoding\U-Neuron\venv\Scripts\python.exe C:\Users\Admin\Documents\LocalCoding\U-Neuron\benchmarks\kspace_reconstruction.py --constraint unitary
+######################################################################
+
+Generating synthetic k-space dataset  (1500 samples, 16×16, 2× acceleration)...
+  Input features (Re+Im k-space):  512
+  Output pixels:                   256
+  Approximate sampling fraction:   56%
+
+============================================================
+  U-Neuron  (394,752 trainable parameters)
+============================================================
+  ep   8/40  train_task=0.02477  reg=0.03330  test_mse=0.02679  test_psnr=15.72 dB  (11.6s)
+  ep  16/40  train_task=0.01731  reg=0.02949  test_mse=0.02057  test_psnr=16.87 dB  (25.9s)
+  ep  24/40  train_task=0.01484  reg=0.02747  test_mse=0.01875  test_psnr=17.27 dB  (40.6s)
+  ep  32/40  train_task=0.01375  reg=0.02634  test_mse=0.01807  test_psnr=17.43 dB  (54.2s)
+  ep  40/40  train_task=0.01347  reg=0.02594  test_mse=0.01800  test_psnr=17.45 dB  (66.3s)
+
+============================================================
+  MLP Baseline  (262,912 trainable parameters)
+============================================================
+  ep   8/40  train_task=0.00678  test_mse=0.01011  test_psnr=19.95 dB  (0.3s)
+  ep  16/40  train_task=0.00351  test_mse=0.00919  test_psnr=20.37 dB  (0.5s)
+  ep  24/40  train_task=0.00225  test_mse=0.00898  test_psnr=20.46 dB  (0.7s)
+  ep  32/40  train_task=0.00176  test_mse=0.00916  test_psnr=20.38 dB  (1.1s)
+  ep  40/40  train_task=0.00166  test_mse=0.00910  test_psnr=20.41 dB  (1.4s)
+
+============================================================
+RESULTS — k-Space Reconstruction
+============================================================
+  Model                   Params         MSE   PSNR (dB)
+  ------------------------------------------------------
+  U-Neuron               394,752     0.01800       17.45
+  MLP Baseline           262,912     0.00910       20.41
+============================================================
+
+Note: PSNR difference reflects the advantage of complex-valued coupling
+      (ULinear) vs treating real/imaginary k-space as independent channels.
+      Landauer regularization also visible in per-epoch reg_loss column.
+
+
+>>> Exit code: 0  Elapsed: 70.6s
+
+
+--- kspace_reconstruction__doubly_stochastic  (27.8s, rc=0) ---
+
+######################################################################
+# kspace_reconstruction [doubly_stochastic]
+# CMD: C:\Users\Admin\Documents\LocalCoding\U-Neuron\venv\Scripts\python.exe C:\Users\Admin\Documents\LocalCoding\U-Neuron\benchmarks\kspace_reconstruction.py --constraint doubly_stochastic
+######################################################################
+
+Generating synthetic k-space dataset  (1500 samples, 16×16, 2× acceleration)...
+  Input features (Re+Im k-space):  512
+  Output pixels:                   256
+  Approximate sampling fraction:   56%
+
+============================================================
+  U-Neuron  (525,824 trainable parameters)
+============================================================
+  ep   8/40  train_task=0.03504  reg=0.03151  test_mse=0.03440  test_psnr=14.64 dB  (4.3s)
+  ep  16/40  train_task=0.02672  reg=0.02902  test_mse=0.02611  test_psnr=15.83 dB  (9.0s)
+  ep  24/40  train_task=0.02301  reg=0.02661  test_mse=0.02251  test_psnr=16.48 dB  (13.2s)
+  ep  32/40  train_task=0.02152  reg=0.02529  test_mse=0.02119  test_psnr=16.74 dB  (17.7s)
+  ep  40/40  train_task=0.02121  reg=0.02484  test_mse=0.02094  test_psnr=16.79 dB  (23.5s)
+
+============================================================
+  MLP Baseline  (262,912 trainable parameters)
+============================================================
+  ep   8/40  train_task=0.00640  test_mse=0.00968  test_psnr=20.14 dB  (0.4s)
+  ep  16/40  train_task=0.00341  test_mse=0.00932  test_psnr=20.30 dB  (0.6s)
+  ep  24/40  train_task=0.00205  test_mse=0.00922  test_psnr=20.35 dB  (0.9s)
+  ep  32/40  train_task=0.00160  test_mse=0.00919  test_psnr=20.36 dB  (1.3s)
+  ep  40/40  train_task=0.00150  test_mse=0.00922  test_psnr=20.35 dB  (1.8s)
+
+============================================================
+RESULTS — k-Space Reconstruction
+============================================================
+  Model                   Params         MSE   PSNR (dB)
+  ------------------------------------------------------
+  U-Neuron               525,824     0.02094       16.79
+  MLP Baseline           262,912     0.00922       20.35
+============================================================
+
+Note: PSNR difference reflects the advantage of complex-valued coupling
+      (ULinear) vs treating real/imaginary k-space as independent channels.
+      Landauer regularization also visible in per-epoch reg_loss column.
+
+
+>>> Exit code: 0  Elapsed: 27.8s
+
+
+--- mnist_compression__general  (112.6s, rc=0) ---
+
+######################################################################
+# mnist_compression [general]
+# CMD: C:\Users\Admin\Documents\LocalCoding\U-Neuron\venv\Scripts\python.exe C:\Users\Admin\Documents\LocalCoding\U-Neuron\benchmarks\mnist_compression.py --constraint general --n-seeds 1 --epochs 15
+######################################################################
+
+Loading and projecting MNIST...
+  Downloading / loading MNIST...
+  Fitting PCA (64 components) on 60,000 MNIST training samples...
+  PCA dimension: 64
+  Seeds per config: 1
+
+  Training U-Neuron lam=0.0  (1 seeds)...
+    (101,652 params)
+    seed 1/1  acc=0.985  landauer=0.0
+    mean_acc=0.985 +/- 0.000  (28.5s)
+
+  Training U-Neuron lam=0.001  (1 seeds)...
+    (101,652 params)
+    seed 1/1  acc=0.986  landauer=0.2
+    mean_acc=0.986 +/- 0.000  (22.7s)
+
+  Training U-Neuron lam=0.01  (1 seeds)...
+    (101,652 params)
+    seed 1/1  acc=0.986  landauer=0.3
+    mean_acc=0.986 +/- 0.000  (22.9s)
+
+  Training U-Neuron lam=0.1  (1 seeds)...
+    (101,652 params)
+    seed 1/1  acc=0.987  landauer=1.3
+    mean_acc=0.987 +/- 0.000  (24.5s)
+
+  Training MLP Baseline  (1 seeds)...
+    (50,826 params)
+    seed 1/1  acc=0.984
+    mean_acc=0.984 +/- 0.000  (7.6s)
+
+==========================================================================================
+RESULTS -- MNIST Landauer Compression Sweep  (1 seeds, 15 epochs)
+==========================================================================================
+  Model                   Acc (mean+/-std)    Landauer  L1_eps  L2_eps  L3_eps  L1_probe  L2_probe  L3_probe
+  --------------------------------------------------------------------------------------
+  U-Neuron lam=0.0           0.985+/-0.000         0.0  1.08e+00  1.18e+00  9.99e-01  0.993      0.994      0.803    
+  U-Neuron lam=0.001         0.986+/-0.000         0.2  7.41e-01  7.75e-01  1.75e+00  0.999      0.998      0.965    
+  U-Neuron lam=0.01          0.986+/-0.000         0.3  7.15e-01  7.25e-01  2.05e+00  0.999      0.997      0.976    
+  U-Neuron lam=0.1           0.987+/-0.000         1.3  7.63e-01  7.08e-01  3.06e+00  0.999      0.990      0.967    
+  MLP Baseline               0.984+/-0.000         n/a  n/a       n/a       n/a       n/a        n/a        n/a      
+==========================================================================================
+
+Key observations to look for:
+  * Accuracy shows mean +/- std across seeds -- high std indicates init sensitivity.
+  * Layer eps and probe values are means across seeds.
+  * 'Landauer' column is mean cumulative thermodynamic cost.
+  * MLP has no eps; its probe accuracy reflects activation quality by comparison.
+
+
+>>> Exit code: 0  Elapsed: 112.6s
+
+
+--- mnist_compression__unitary  (99.4s, rc=0) ---
+
+######################################################################
+# mnist_compression [unitary]
+# CMD: C:\Users\Admin\Documents\LocalCoding\U-Neuron\venv\Scripts\python.exe C:\Users\Admin\Documents\LocalCoding\U-Neuron\benchmarks\mnist_compression.py --constraint unitary --n-seeds 1 --epochs 15
+######################################################################
+
+Loading and projecting MNIST...
+  Downloading / loading MNIST...
+  Fitting PCA (64 components) on 60,000 MNIST training samples...
+  PCA dimension: 64
+  Seeds per config: 1
+
+  Training U-Neuron lam=0.0  (1 seeds)...
+    (101,652 params)
+    seed 1/1  acc=0.985  landauer=0.0
+    mean_acc=0.985 +/- 0.000  (22.0s)
+
+  Training U-Neuron lam=0.001  (1 seeds)...
+    (101,652 params)
+    seed 1/1  acc=0.986  landauer=0.2
+    mean_acc=0.986 +/- 0.000  (21.3s)
+
+  Training U-Neuron lam=0.01  (1 seeds)...
+    (101,652 params)
+    seed 1/1  acc=0.986  landauer=0.3
+    mean_acc=0.986 +/- 0.000  (21.6s)
+
+  Training U-Neuron lam=0.1  (1 seeds)...
+    (101,652 params)
+    seed 1/1  acc=0.987  landauer=1.3
+    mean_acc=0.987 +/- 0.000  (21.5s)
+
+  Training MLP Baseline  (1 seeds)...
+    (50,826 params)
+    seed 1/1  acc=0.984
+    mean_acc=0.984 +/- 0.000  (7.0s)
+
+==========================================================================================
+RESULTS -- MNIST Landauer Compression Sweep  (1 seeds, 15 epochs)
+==========================================================================================
+  Model                   Acc (mean+/-std)    Landauer  L1_eps  L2_eps  L3_eps  L1_probe  L2_probe  L3_probe
+  --------------------------------------------------------------------------------------
+  U-Neuron lam=0.0           0.985+/-0.000         0.0  1.08e+00  1.18e+00  9.99e-01  0.993      0.994      0.803    
+  U-Neuron lam=0.001         0.986+/-0.000         0.2  7.41e-01  7.75e-01  1.75e+00  0.999      0.998      0.965    
+  U-Neuron lam=0.01          0.986+/-0.000         0.3  7.15e-01  7.25e-01  2.05e+00  0.999      0.997      0.976    
+  U-Neuron lam=0.1           0.987+/-0.000         1.3  7.63e-01  7.08e-01  3.06e+00  0.999      0.990      0.967    
+  MLP Baseline               0.984+/-0.000         n/a  n/a       n/a       n/a       n/a        n/a        n/a      
+==========================================================================================
+
+Key observations to look for:
+  * Accuracy shows mean +/- std across seeds -- high std indicates init sensitivity.
+  * Layer eps and probe values are means across seeds.
+  * 'Landauer' column is mean cumulative thermodynamic cost.
+  * MLP has no eps; its probe accuracy reflects activation quality by comparison.
+
+
+>>> Exit code: 0  Elapsed: 99.4s
+
+
+--- mnist_compression__doubly_stochastic  (109.1s, rc=0) ---
+
+######################################################################
+# mnist_compression [doubly_stochastic]
+# CMD: C:\Users\Admin\Documents\LocalCoding\U-Neuron\venv\Scripts\python.exe C:\Users\Admin\Documents\LocalCoding\U-Neuron\benchmarks\mnist_compression.py --constraint doubly_stochastic --n-seeds 1 --epochs 15
+######################################################################
+
+Loading and projecting MNIST...
+  Downloading / loading MNIST...
+  Fitting PCA (64 components) on 60,000 MNIST training samples...
+  PCA dimension: 64
+  Seeds per config: 1
+
+  Training U-Neuron lam=0.0  (1 seeds)...
+    (101,652 params)
+    seed 1/1  acc=0.985  landauer=0.0
+    mean_acc=0.985 +/- 0.000  (22.4s)
+
+  Training U-Neuron lam=0.001  (1 seeds)...
+    (101,652 params)
+    seed 1/1  acc=0.986  landauer=0.2
+    mean_acc=0.986 +/- 0.000  (22.9s)
+
+  Training U-Neuron lam=0.01  (1 seeds)...
+    (101,652 params)
+    seed 1/1  acc=0.986  landauer=0.3
+    mean_acc=0.986 +/- 0.000  (27.1s)
+
+  Training U-Neuron lam=0.1  (1 seeds)...
+    (101,652 params)
+    seed 1/1  acc=0.987  landauer=1.3
+    mean_acc=0.987 +/- 0.000  (24.1s)
+
+  Training MLP Baseline  (1 seeds)...
+    (50,826 params)
+    seed 1/1  acc=0.984
+    mean_acc=0.984 +/- 0.000  (6.5s)
+
+==========================================================================================
+RESULTS -- MNIST Landauer Compression Sweep  (1 seeds, 15 epochs)
+==========================================================================================
+  Model                   Acc (mean+/-std)    Landauer  L1_eps  L2_eps  L3_eps  L1_probe  L2_probe  L3_probe
+  --------------------------------------------------------------------------------------
+  U-Neuron lam=0.0           0.985+/-0.000         0.0  1.08e+00  1.18e+00  9.99e-01  0.993      0.994      0.803    
+  U-Neuron lam=0.001         0.986+/-0.000         0.2  7.41e-01  7.75e-01  1.75e+00  0.999      0.998      0.965    
+  U-Neuron lam=0.01          0.986+/-0.000         0.3  7.15e-01  7.25e-01  2.05e+00  0.999      0.997      0.976    
+  U-Neuron lam=0.1           0.987+/-0.000         1.3  7.63e-01  7.08e-01  3.06e+00  0.999      0.990      0.967    
+  MLP Baseline               0.984+/-0.000         n/a  n/a       n/a       n/a       n/a        n/a        n/a      
+==========================================================================================
+
+Key observations to look for:
+  * Accuracy shows mean +/- std across seeds -- high std indicates init sensitivity.
+  * Layer eps and probe values are means across seeds.
+  * 'Landauer' column is mean cumulative thermodynamic cost.
+  * MLP has no eps; its probe accuracy reflects activation quality by comparison.
+
+
+>>> Exit code: 0  Elapsed: 109.1s
+
+
+--- ood_detection__general  (49.1s, rc=0) ---
+
+######################################################################
+# ood_detection [general]
+# CMD: C:\Users\Admin\Documents\LocalCoding\U-Neuron\venv\Scripts\python.exe C:\Users\Admin\Documents\LocalCoding\U-Neuron\benchmarks\ood_detection.py --constraint general --epochs 20
+######################################################################
+C:\Users\Admin\Documents\LocalCoding\U-Neuron\venv\Lib\site-packages\torchvision\datasets\cifar.py:83: VisibleDeprecationWarning: dtype(): align should be passed as Python or NumPy boolean but got `align=0`. Did you mean to pass a tuple to create a subarray type? (Deprecated NumPy 2.4)
+  entry = pickle.load(f, encoding="latin1")
+
+Loading and projecting CIFAR-10 / CIFAR-100...
+  Downloading / loading datasets...
+  Fitting PCA (256 components) on 50,000 CIFAR-10 training samples...
+  PCA dimension: 256
+  In-dist (CIFAR-10 test): 10,000 samples
+  OOD (CIFAR-100 test):    10,000 samples
+
+============================================================
+  U-Neuron  (83,604 trainable parameters)
+============================================================
+  ep   4/20  train_ce=1.1138  val_acc=0.528  (4.6s)
+  ep   8/20  train_ce=0.8019  val_acc=0.530  (9.2s)
+  ep  12/20  train_ce=0.5708  val_acc=0.530  (15.0s)
+  ep  16/20  train_ce=0.4263  val_acc=0.531  (20.1s)
+  ep  20/20  train_ce=0.3732  val_acc=0.530  (26.0s)
+
+============================================================
+  MC-Dropout MLP  (41,802 trainable parameters)
+============================================================
+  ep   4/20  train_ce=1.4760  val_acc=0.508  (2.1s)
+  ep   8/20  train_ce=1.3576  val_acc=0.533  (4.1s)
+  ep  12/20  train_ce=1.2827  val_acc=0.543  (6.1s)
+  ep  16/20  train_ce=1.2384  val_acc=0.549  (8.2s)
+  ep  20/20  train_ce=1.2170  val_acc=0.547  (10.2s)
+
+Collecting anomaly scores...
+
+  ε distribution (U-Neuron, final layer, lambda_reg=0.01):
+    In-dist  (CIFAR-10):  mean=1.7886e+00  std=6.3099e-01
+    OOD      (CIFAR-100): mean=1.7723e+00  std=6.4240e-01
+    Ratio OOD/in (mean):  0.991×
+    In-dist  var(ε):      mean=6.9814e+00
+    OOD      var(ε):      mean=6.8280e+00
+    Ratio OOD/in (var):   0.978×
+
+============================================================
+RESULTS — OOD Detection (CIFAR-10 vs CIFAR-100)  [lambda_reg=0.01]
+============================================================
+  Method                         Accuracy    AUROC
+  ------------------------------------------------
+  U-Neuron  (eps mean)              0.530    0.487
+  U-Neuron  (eps variance)          0.530    0.489
+  U-Neuron  (eps max)               0.530    0.477
+  U-Neuron  (MSP baseline)          0.530    0.577
+  MC-Dropout MLP                    0.547    0.557
+============================================================
+
+Interpretation:
+  AUROC > 0.5  → ε score separates OOD from in-dist better than chance.
+  AUROC → 1.0  → perfect OOD detector.
+  The ε signal is a *free* byproduct of the U-space forward pass;
+  no OOD samples or uncertainty objectives were used during training.
+
+
+>>> Exit code: 0  Elapsed: 49.1s
+
+
+--- ood_detection__unitary  (51.5s, rc=0) ---
+
+######################################################################
+# ood_detection [unitary]
+# CMD: C:\Users\Admin\Documents\LocalCoding\U-Neuron\venv\Scripts\python.exe C:\Users\Admin\Documents\LocalCoding\U-Neuron\benchmarks\ood_detection.py --constraint unitary --epochs 20
+######################################################################
+C:\Users\Admin\Documents\LocalCoding\U-Neuron\venv\Lib\site-packages\torchvision\datasets\cifar.py:83: VisibleDeprecationWarning: dtype(): align should be passed as Python or NumPy boolean but got `align=0`. Did you mean to pass a tuple to create a subarray type? (Deprecated NumPy 2.4)
+  entry = pickle.load(f, encoding="latin1")
+
+Loading and projecting CIFAR-10 / CIFAR-100...
+  Downloading / loading datasets...
+  Fitting PCA (256 components) on 50,000 CIFAR-10 training samples...
+  PCA dimension: 256
+  In-dist (CIFAR-10 test): 10,000 samples
+  OOD (CIFAR-100 test):    10,000 samples
+
+============================================================
+  U-Neuron  (83,604 trainable parameters)
+============================================================
+  ep   4/20  train_ce=1.1138  val_acc=0.528  (5.5s)
+  ep   8/20  train_ce=0.8019  val_acc=0.530  (11.0s)
+  ep  12/20  train_ce=0.5708  val_acc=0.530  (16.3s)
+  ep  16/20  train_ce=0.4263  val_acc=0.531  (21.2s)
+  ep  20/20  train_ce=0.3732  val_acc=0.530  (27.1s)
+
+============================================================
+  MC-Dropout MLP  (41,802 trainable parameters)
+============================================================
+  ep   4/20  train_ce=1.4760  val_acc=0.508  (2.5s)
+  ep   8/20  train_ce=1.3576  val_acc=0.533  (4.4s)
+  ep  12/20  train_ce=1.2827  val_acc=0.543  (6.2s)
+  ep  16/20  train_ce=1.2384  val_acc=0.549  (8.5s)
+  ep  20/20  train_ce=1.2170  val_acc=0.547  (10.8s)
+
+Collecting anomaly scores...
+
+  ε distribution (U-Neuron, final layer, lambda_reg=0.01):
+    In-dist  (CIFAR-10):  mean=1.7886e+00  std=6.3099e-01
+    OOD      (CIFAR-100): mean=1.7723e+00  std=6.4240e-01
+    Ratio OOD/in (mean):  0.991×
+    In-dist  var(ε):      mean=6.9814e+00
+    OOD      var(ε):      mean=6.8280e+00
+    Ratio OOD/in (var):   0.978×
+
+============================================================
+RESULTS — OOD Detection (CIFAR-10 vs CIFAR-100)  [lambda_reg=0.01]
+============================================================
+  Method                         Accuracy    AUROC
+  ------------------------------------------------
+  U-Neuron  (eps mean)              0.530    0.487
+  U-Neuron  (eps variance)          0.530    0.489
+  U-Neuron  (eps max)               0.530    0.477
+  U-Neuron  (MSP baseline)          0.530    0.577
+  MC-Dropout MLP                    0.547    0.557
+============================================================
+
+Interpretation:
+  AUROC > 0.5  → ε score separates OOD from in-dist better than chance.
+  AUROC → 1.0  → perfect OOD detector.
+  The ε signal is a *free* byproduct of the U-space forward pass;
+  no OOD samples or uncertainty objectives were used during training.
+
+
+>>> Exit code: 0  Elapsed: 51.5s
+
+
+--- ood_detection__doubly_stochastic  (50.3s, rc=0) ---
+
+######################################################################
+# ood_detection [doubly_stochastic]
+# CMD: C:\Users\Admin\Documents\LocalCoding\U-Neuron\venv\Scripts\python.exe C:\Users\Admin\Documents\LocalCoding\U-Neuron\benchmarks\ood_detection.py --constraint doubly_stochastic --epochs 20
+######################################################################
+C:\Users\Admin\Documents\LocalCoding\U-Neuron\venv\Lib\site-packages\torchvision\datasets\cifar.py:83: VisibleDeprecationWarning: dtype(): align should be passed as Python or NumPy boolean but got `align=0`. Did you mean to pass a tuple to create a subarray type? (Deprecated NumPy 2.4)
+  entry = pickle.load(f, encoding="latin1")
+
+Loading and projecting CIFAR-10 / CIFAR-100...
+  Downloading / loading datasets...
+  Fitting PCA (256 components) on 50,000 CIFAR-10 training samples...
+  PCA dimension: 256
+  In-dist (CIFAR-10 test): 10,000 samples
+  OOD (CIFAR-100 test):    10,000 samples
+
+============================================================
+  U-Neuron  (83,604 trainable parameters)
+============================================================
+  ep   4/20  train_ce=1.1138  val_acc=0.528  (4.6s)
+  ep   8/20  train_ce=0.8019  val_acc=0.530  (10.6s)
+  ep  12/20  train_ce=0.5708  val_acc=0.530  (15.5s)
+  ep  16/20  train_ce=0.4263  val_acc=0.531  (20.2s)
+  ep  20/20  train_ce=0.3732  val_acc=0.530  (25.0s)
+
+============================================================
+  MC-Dropout MLP  (41,802 trainable parameters)
+============================================================
+  ep   4/20  train_ce=1.4760  val_acc=0.508  (2.2s)
+  ep   8/20  train_ce=1.3576  val_acc=0.533  (4.2s)
+  ep  12/20  train_ce=1.2827  val_acc=0.543  (7.8s)
+  ep  16/20  train_ce=1.2384  val_acc=0.549  (10.4s)
+  ep  20/20  train_ce=1.2170  val_acc=0.547  (12.6s)
+
+Collecting anomaly scores...
+
+  ε distribution (U-Neuron, final layer, lambda_reg=0.01):
+    In-dist  (CIFAR-10):  mean=1.7886e+00  std=6.3099e-01
+    OOD      (CIFAR-100): mean=1.7723e+00  std=6.4240e-01
+    Ratio OOD/in (mean):  0.991×
+    In-dist  var(ε):      mean=6.9814e+00
+    OOD      var(ε):      mean=6.8280e+00
+    Ratio OOD/in (var):   0.978×
+
+============================================================
+RESULTS — OOD Detection (CIFAR-10 vs CIFAR-100)  [lambda_reg=0.01]
+============================================================
+  Method                         Accuracy    AUROC
+  ------------------------------------------------
+  U-Neuron  (eps mean)              0.530    0.487
+  U-Neuron  (eps variance)          0.530    0.489
+  U-Neuron  (eps max)               0.530    0.477
+  U-Neuron  (MSP baseline)          0.530    0.577
+  MC-Dropout MLP                    0.547    0.557
+============================================================
+
+Interpretation:
+  AUROC > 0.5  → ε score separates OOD from in-dist better than chance.
+  AUROC → 1.0  → perfect OOD detector.
+  The ε signal is a *free* byproduct of the U-space forward pass;
+  no OOD samples or uncertainty objectives were used during training.
+
+
+>>> Exit code: 0  Elapsed: 50.3s
+
+
+================================================================================
+TIMING SUMMARY
+Label                                             Time   Status
+-----------------------------------------------------------------
+quantum_tomography__general                       8.6s       OK
+quantum_tomography__unitary                      18.0s       OK
+quantum_tomography__doubly_stochastic            14.7s       OK
+kspace_reconstruction__general                   11.4s       OK
+kspace_reconstruction__unitary                   70.6s       OK
+kspace_reconstruction__doubly_stochastic         27.8s       OK
+mnist_compression__general                      112.6s       OK
+mnist_compression__unitary                       99.4s       OK
+mnist_compression__doubly_stochastic            109.1s       OK
+ood_detection__general                           49.1s       OK
+ood_detection__unitary                           51.5s       OK
+ood_detection__doubly_stochastic                 50.3s       OK
+
+Total: 623s (10.4 min)

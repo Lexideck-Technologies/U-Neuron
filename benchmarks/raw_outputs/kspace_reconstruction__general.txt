@@ -1,0 +1,44 @@
+
+######################################################################
+# kspace_reconstruction [general]
+# CMD: C:\Users\Admin\Documents\LocalCoding\U-Neuron\venv\Scripts\python.exe C:\Users\Admin\Documents\LocalCoding\U-Neuron\benchmarks\kspace_reconstruction.py --constraint general
+######################################################################
+
+Generating synthetic k-space dataset  (1500 samples, 16×16, 2× acceleration)...
+  Input features (Re+Im k-space):  512
+  Output pixels:                   256
+  Approximate sampling fraction:   56%
+
+============================================================
+  U-Neuron  (525,824 trainable parameters)
+============================================================
+  ep   8/40  train_task=0.01300  reg=0.02657  test_mse=0.01379  test_psnr=18.61 dB  (1.6s)
+  ep  16/40  train_task=0.00882  reg=0.02372  test_mse=0.01157  test_psnr=19.37 dB  (2.7s)
+  ep  24/40  train_task=0.00621  reg=0.02132  test_mse=0.01002  test_psnr=19.99 dB  (3.8s)
+  ep  32/40  train_task=0.00534  reg=0.01999  test_mse=0.00979  test_psnr=20.09 dB  (4.7s)
+  ep  40/40  train_task=0.00511  reg=0.01950  test_mse=0.00970  test_psnr=20.13 dB  (7.7s)
+
+============================================================
+  MLP Baseline  (262,912 trainable parameters)
+============================================================
+  ep   8/40  train_task=0.00640  test_mse=0.00968  test_psnr=20.14 dB  (0.3s)
+  ep  16/40  train_task=0.00341  test_mse=0.00932  test_psnr=20.30 dB  (0.5s)
+  ep  24/40  train_task=0.00205  test_mse=0.00922  test_psnr=20.35 dB  (0.7s)
+  ep  32/40  train_task=0.00160  test_mse=0.00919  test_psnr=20.36 dB  (1.0s)
+  ep  40/40  train_task=0.00150  test_mse=0.00922  test_psnr=20.35 dB  (1.2s)
+
+============================================================
+RESULTS — k-Space Reconstruction
+============================================================
+  Model                   Params         MSE   PSNR (dB)
+  ------------------------------------------------------
+  U-Neuron               525,824     0.00970       20.13
+  MLP Baseline           262,912     0.00922       20.35
+============================================================
+
+Note: PSNR difference reflects the advantage of complex-valued coupling
+      (ULinear) vs treating real/imaginary k-space as independent channels.
+      Landauer regularization also visible in per-epoch reg_loss column.
+
+
+>>> Exit code: 0  Elapsed: 11.4s

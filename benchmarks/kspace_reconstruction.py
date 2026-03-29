@@ -124,12 +124,13 @@ def _make_phantom_images(n: int, sz: int, rng: torch.Generator) -> torch.Tensor:
 class UNeuronReconstructor(nn.Module):
     """U-Neuron k-space reconstructor built on UModel."""
 
-    def __init__(self, n_input: int, n_output: int, hidden: int = 256) -> None:
+    def __init__(self, n_input: int, n_output: int, hidden: int = 256, constraint: str = "general") -> None:
         super().__init__()
         self.model = UModel(
             layer_sizes=[n_input, hidden, hidden, n_output],
             activation="crelu",
             lambda_reg=0.01,
+            constraint=constraint,
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -255,7 +256,7 @@ def run(args: argparse.Namespace) -> None:
     test_loader = DataLoader(test_ds, batch_size=args.batch_size)
 
     models_cfg = [
-        ("U-Neuron", UNeuronReconstructor(n_input, n_output, hidden=args.hidden), True),
+        ("U-Neuron", UNeuronReconstructor(n_input, n_output, hidden=args.hidden, constraint=args.constraint), True),
         ("MLP Baseline", MLPBaseline(n_input, n_output, hidden=args.hidden), False),
     ]
 
@@ -322,6 +323,11 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--batch-size", type=int, default=64, help="Batch size")
     p.add_argument("--lr", type=float, default=2**-9, help="Adam learning rate (default: 2^-9)")
     p.add_argument("--seed", type=int, default=42)
+    p.add_argument(
+        "--constraint", type=str, default="general",
+        choices=["general", "unitary", "doubly_stochastic"],
+        help="Weight manifold constraint (default: general)",
+    )
     return p.parse_args()
 
 

@@ -171,7 +171,7 @@ class UNeuronTomo(nn.Module):
     expectations in (-1, 1), bypassing the UEmission non-negativity constraint.
     """
 
-    def __init__(self, n_ops: int, hidden: int = 128) -> None:
+    def __init__(self, n_ops: int, hidden: int = 128, constraint: str = "unitary") -> None:
         super().__init__()
         # Gradual expansion (n_ops → mid → hidden → hidden) avoids the
         # extreme fan-out that destabilises unconstrained first layers.
@@ -181,7 +181,7 @@ class UNeuronTomo(nn.Module):
         self.backbone = UModel(
             layer_sizes=[n_ops, mid, hidden, hidden],
             activation="crelu",
-            constraint="unitary",
+            constraint=constraint,
             lambda_reg=0.01,
         )
         self.head = nn.Linear(hidden, n_ops)
@@ -405,7 +405,7 @@ def run(args: argparse.Namespace) -> None:
     test_loader = DataLoader(test_ds, batch_size=args.batch_size)
 
     models_cfg = [
-        ("U-Neuron", UNeuronTomo(n_ops, hidden=args.hidden), True),
+        ("U-Neuron", UNeuronTomo(n_ops, hidden=args.hidden, constraint=args.constraint), True),
         ("MLP Baseline", MLPTomo(n_ops, hidden=args.hidden), False),
     ]
 
@@ -483,7 +483,7 @@ def run(args: argparse.Namespace) -> None:
             tr_ld = DataLoader(tr_ds, batch_size=args.batch_size, shuffle=True)
             te_ld = DataLoader(te_ds, batch_size=args.batch_size)
 
-            sweep_model = UNeuronTomo(n_ops, hidden=args.hidden)
+            sweep_model = UNeuronTomo(n_ops, hidden=args.hidden, constraint=args.constraint)
             sweep_opt = optim.Adam(sweep_model.parameters(), lr=args.lr)
             sweep_sched = optim.lr_scheduler.CosineAnnealingLR(
                 sweep_opt, T_max=args.epochs
@@ -563,6 +563,11 @@ def parse_args() -> argparse.Namespace:
         help="Run an additional sweep over noise levels [0, 0.02, 0.05, 0.10, 0.20]",
     )
     p.add_argument("--seed", type=int, default=42)
+    p.add_argument(
+        "--constraint", type=str, default="unitary",
+        choices=["general", "unitary", "doubly_stochastic"],
+        help="Weight manifold constraint (default: unitary)",
+    )
     return p.parse_args()
 
 

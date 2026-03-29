@@ -124,12 +124,13 @@ def load_mnist(
 class UNeuronClassifier(nn.Module):
     """U-Neuron classifier with configurable Landauer weight."""
 
-    def __init__(self, n_features: int, hidden: int = 256, lambda_reg: float = 0.01) -> None:
+    def __init__(self, n_features: int, hidden: int = 256, lambda_reg: float = 0.01, constraint: str = "general") -> None:
         super().__init__()
         self.model = UModel(
             layer_sizes=[n_features, hidden, hidden // 2, 10],
             activation="crelu",
             lambda_reg=lambda_reg,
+            constraint=constraint,
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -267,7 +268,7 @@ def run(args: argparse.Namespace) -> None:
             run_seed = args.seed + seed_i * 1000 + 1
             torch.manual_seed(run_seed)
 
-            model = UNeuronClassifier(args.n_pca, hidden=args.hidden, lambda_reg=lam)
+            model = UNeuronClassifier(args.n_pca, hidden=args.hidden, lambda_reg=lam, constraint=args.constraint)
             optimizer = optim.Adam(model.parameters(), lr=args.lr)
             scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs)
 
@@ -406,6 +407,11 @@ def parse_args() -> argparse.Namespace:
         help="Directory for MNIST cache (default: ./data)",
     )
     p.add_argument("--seed", type=int, default=42)
+    p.add_argument(
+        "--constraint", type=str, default="general",
+        choices=["general", "unitary", "doubly_stochastic"],
+        help="Weight manifold constraint (default: general)",
+    )
     return p.parse_args()
 
 

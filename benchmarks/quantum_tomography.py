@@ -173,9 +173,15 @@ class UNeuronTomo(nn.Module):
 
     def __init__(self, n_ops: int, hidden: int = 128) -> None:
         super().__init__()
+        # Gradual expansion (n_ops → mid → hidden → hidden) avoids the
+        # extreme fan-out that destabilises unconstrained first layers.
+        # 'unitary' constraint on the square 128→128 layers preserves
+        # norm through the backbone — critical for quantum state signals.
+        mid = max(n_ops * 4, 32)  # intermediate width
         self.backbone = UModel(
-            layer_sizes=[n_ops, hidden, hidden, hidden],
+            layer_sizes=[n_ops, mid, hidden, hidden],
             activation="crelu",
+            constraint="unitary",
             lambda_reg=0.01,
         )
         self.head = nn.Linear(hidden, n_ops)
@@ -550,7 +556,8 @@ def parse_args() -> argparse.Namespace:
         help="Training epochs (default: 40)",
     )
     p.add_argument("--batch-size", type=int, default=128)
-    p.add_argument("--lr", type=float, default=1e-3)
+    p.add_argument("--lr", type=float, default=2**-9,
+                   help="Learning rate (default: 2^-9 ≈ 0.00195)")
     p.add_argument(
         "--noise-sweep", action="store_true",
         help="Run an additional sweep over noise levels [0, 0.02, 0.05, 0.10, 0.20]",

@@ -12,6 +12,7 @@ from u_neuron.utensor import UTensor
 logger = logging.getLogger(__name__)
 
 EPS_FLOOR: float = 1e-8
+EPS_CEILING: float = 10.0  # safety cap: prevents Inf from cross-coupling amplification
 
 
 class CReLU(nn.Module):
@@ -36,7 +37,7 @@ class CReLU(nn.Module):
             x_out = F.gelu(z.x)
 
         eps_before = z.eps.min().item()
-        eps_out = torch.clamp(F.softplus(z.eps), min=EPS_FLOOR)
+        eps_out = torch.clamp(F.softplus(z.eps), min=EPS_FLOOR, max=EPS_CEILING)
         eps_after = eps_out.min().item()
 
         logger.debug(

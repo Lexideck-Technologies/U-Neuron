@@ -210,6 +210,7 @@ def train_epoch(
         ce = F.cross_entropy(logits, y)
         reg = model.regularization_loss() if is_uneuron else torch.tensor(0.0)
         (ce + reg).backward()
+        nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
         optimizer.step()
         total_ce += ce.item() * x.size(0)
         total_reg += reg.item() * x.size(0)
@@ -399,7 +400,7 @@ def parse_args() -> argparse.Namespace:
         help="Number of random seeds per configuration (default: 5)",
     )
     p.add_argument("--batch-size", type=int, default=256)
-    p.add_argument("--lr", type=float, default=1e-3)
+    p.add_argument("--lr", type=float, default=2**-9, help="Learning rate (default: 2^-9)")
     p.add_argument(
         "--data-dir", type=str, default="./data",
         help="Directory for MNIST cache (default: ./data)",

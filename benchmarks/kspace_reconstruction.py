@@ -192,6 +192,7 @@ def train_epoch(
         task_loss = F.mse_loss(pred, y)
         reg_loss = model.regularization_loss() if is_uneuron else torch.tensor(0.0)
         (task_loss + reg_loss).backward()
+        nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
         optimizer.step()
         total_task += task_loss.item() * x.size(0)
         total_reg += reg_loss.item() * x.size(0)
@@ -319,7 +320,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--hidden", type=int, default=256, help="Hidden layer width")
     p.add_argument("--epochs", type=int, default=40, help="Training epochs")
     p.add_argument("--batch-size", type=int, default=64, help="Batch size")
-    p.add_argument("--lr", type=float, default=1e-3, help="Adam learning rate")
+    p.add_argument("--lr", type=float, default=2**-9, help="Adam learning rate (default: 2^-9)")
     p.add_argument("--seed", type=int, default=42)
     return p.parse_args()
 

@@ -33,6 +33,9 @@ class UModel(nn.Module):
         layer_sizes: Channel dimensions [C_in, H_1, ..., H_k, C_out].
                      Produces len(layer_sizes) - 1 ULinear layers.
         activation:  Activation function — 'crelu' (default) or 'modrelu'.
+        constraint:  Weight constraint — 'standard', 'unitary', or
+                     'doubly_stochastic'.  Non-square layers always use
+                     'standard' (unitary/d.s. require square matrices).
         lambda_reg:  Landauer regularizer weight λ (default 0.01).
         beta_reg:    Landauer regularizer inverse temperature β (default 1.0).
 
@@ -44,6 +47,7 @@ class UModel(nn.Module):
         self,
         layer_sizes: list[int],
         activation: str = "crelu",
+        constraint: str = "general",
         lambda_reg: float = 0.01,
         beta_reg: float = 1.0,
     ) -> None:
@@ -60,12 +64,17 @@ class UModel(nn.Module):
 
         self.layer_sizes = layer_sizes
         self.activation_name = activation
+        self.constraint = constraint
 
         # One ULinear per adjacent pair in layer_sizes.
-        self.layers: nn.ModuleList = nn.ModuleList(
-            [ULinear(layer_sizes[i], layer_sizes[i + 1])
-             for i in range(len(layer_sizes) - 1)]
-        )
+        # Non-square layers use 'standard' (unitary/d.s. require square).
+        self.layers: nn.ModuleList = nn.ModuleList([
+            ULinear(
+                layer_sizes[i], layer_sizes[i + 1],
+                constraint=constraint if layer_sizes[i] == layer_sizes[i + 1] else "general",
+            )
+            for i in range(len(layer_sizes) - 1)
+        ])
 
         # Activation function — registered as a submodule via nn.Module.__setattr__.
         self.activation_fn: nn.Module = CReLU() if activation == "crelu" else modReLU()

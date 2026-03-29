@@ -176,9 +176,13 @@ class ULinear(nn.Module):
             nn.init.xavier_uniform_(self.W_b)
 
         self.bias_x = nn.Parameter(torch.zeros(out_channels))
-        # Fan-in proportional init (matches Kaiming bias convention)
+        # Fan-in proportional init (matches Kaiming bias convention).
+        # Symmetric range covers both signs: positive bias → larger
+        # post-softplus ε (more exploration), negative bias → smaller
+        # post-softplus ε (more committed).  Safe because softplus in
+        # the activation enforces positivity, not ULinear.
         bound = 1.0 / math.sqrt(in_channels)
-        self.bias_eps = nn.Parameter(torch.empty(out_channels).uniform_(0.0, bound))
+        self.bias_eps = nn.Parameter(torch.empty(out_channels).uniform_(-bound, bound))
 
         logger.debug(
             "ULinear created: in=%d, out=%d, constraint=%s",

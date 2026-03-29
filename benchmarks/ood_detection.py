@@ -285,6 +285,7 @@ def train_epoch(
         ce = F.cross_entropy(logits, y)
         reg = model.regularization_loss() if is_uneuron else torch.tensor(0.0)
         (ce + reg).backward()
+        nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
         optimizer.step()
         total_loss += ce.item() * x.size(0)
         n += x.size(0)
@@ -430,8 +431,8 @@ def parse_args() -> argparse.Namespace:
         help="Batch size (default: 256)",
     )
     p.add_argument(
-        "--lr", type=float, default=1e-3,
-        help="Adam learning rate (default: 1e-3)",
+        "--lr", type=float, default=2**-9,
+        help="Adam learning rate (default: 2^-9)",
     )
     p.add_argument(
         "--lambda-reg", type=float, default=0.01,

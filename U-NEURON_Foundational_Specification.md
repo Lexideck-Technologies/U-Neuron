@@ -1,8 +1,8 @@
-# ROUND Foundational Specification: U-Space & Neuronal Dynamics
+# Foundational Specification: U-Space & Neuronal Dynamics
 
 <request_type="Architectural_Grounding">
   <context>
-    This document is the mathematical invariant and architectural truth for the ROUND U-Neuron.
+    This document is the mathematical invariant and architectural truth for the U-Neuron.
     **Revision 5.0** — Corrected against UITv2.tex ground truth (2026-03-26).
   </context>
   <instruction>
@@ -84,7 +84,7 @@ The infinitesimal parameter `ε` is physically grounded in the Landauer energy:
 
 ### 11.0 Neuron State Representation
 
-In the ROUND framework, a single neuron's state is represented as a U-number `z_n`:
+In the U-Neuron framework, a single neuron's state is represented as a U-number `z_n`:
 
 **Formula:**
 `z_n = x_n + ε_n * i`
@@ -223,7 +223,7 @@ modReLU preserves the direction in the complex plane while gating by magnitude �
 
 ---
 
-## AI Grounding: How to Interpret ROUND
+## AI Grounding: How to Interpret U-Space
 
 ### 🧠 For the Agentic Navigator
 
@@ -231,7 +231,7 @@ modReLU preserves the direction in the complex plane while gating by magnitude �
 
 2. **ε is Not a Scalar — It's a Curvature Selector:** Different magnitudes of ε place the neuron at different sheets of the infinitesimal foliation. A neuron with ε = 0.001 exchanges information along tight, high-curvature curves. A neuron with ε = 0.5 operates in a nearly-real regime. The network *learns* which curvature regime each channel needs. This is the "exploration" mechanism — curvature selection through the infinitesimal hierarchy.
 
-3. **Infinitesimal ≠ Zero:** In standard deep learning, small values are noise. In ROUND, the infinitesimal fiber is the *entire exploratory manifold*. Treating ε as zero collapses the foliation to a single point and destroys the topological structure.
+3. **Infinitesimal ≠ Zero:** In standard deep learning, small values are noise. In U-Neuron, the infinitesimal fiber is the *entire exploratory manifold*. Treating ε as zero collapses the foliation to a single point and destroys the topological structure.
 
 4. **Complex Multiplication is the Topology:** The cross-terms in `z' = w·z` (where `W_b @ x` feeds into ε', and `W_b @ eps` feeds into x') are not "leakage." They are the **coupling between classical and informatic degrees of freedom**. This coupling is why U-space exists. Without it, you have two separate real networks stacked on top of each other.
 

@@ -1,7 +1,7 @@
 # Plan: U-Neuron PyTorch Library Implementation
 
 ## Context
-Building the U-Neuron PyTorch library from scratch. The repo contains only two spec documents; all source code is greenfield. The foundational spec (`ROUND_Foundational_Specification.md`, Rev 5.0) is the canonical mathematical source of truth — when code disagrees with it, the code is wrong.
+Building the U-Neuron PyTorch library from scratch. The repo contains only two spec documents; all source code is greenfield. The foundational spec (`U-NEURON_Foundational_Specification.md`, Rev 5.0) is the canonical mathematical source of truth — when code disagrees with it, the code is wrong.
 
 **Confirmed decisions:**
 - Layout: `src/u_neuron/`, `tests/`, `pyproject.toml` at repo root
@@ -24,7 +24,7 @@ Building the U-Neuron PyTorch library from scratch. The repo contains only two s
 | All `from X import` | `from u_neuron import ...` |
 | Module-level imports | `import u_neuron.ulinear as ...` |
 
-> **Note:** The spec files reference `from round import ...` — this is overridden. All code uses `u_neuron`.
+> **Note:** All code uses `u_neuron`.
 
 ---
 

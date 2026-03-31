@@ -1,8 +1,8 @@
 # tests/test_invariants.py
-"""Invariant test suite for the U-Neuron ROUND framework. F-RD07.
+"""Invariant test suite for the U-Neuron framework. F-RD07.
 
 Exactly 10 test_invariant_* functions, each verifying a mathematical or
-architectural invariant from the ROUND Foundational Specification Rev 5.0.
+architectural invariant from the Foundational Specification Rev 5.0.
 
 All invariants must pass after every development wave. Failures indicate
 a violation of the spec's mathematical contracts.

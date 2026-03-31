@@ -2,7 +2,7 @@
 
 **Foliated complex-valued neural architecture in U-space.**
 
-U-Neuron implements the ROUND (Relativistic Operators in U-Number Dynamics) framework — a PyTorch library where every neuron is a complex-valued **U-number** `z = x + εi`, and every layer operation is algebraic multiplication in that number space. The infinitesimal fiber `ε` is not noise or a second channel — it is a **curvature selector** over a foliated family of information-exchange curves, grounded in the Landauer energy bound.
+U-Neuron is a PyTorch library where every neuron is a complex-valued **U-number** `z = x + εi`, and every layer operation is algebraic multiplication in that number space. The infinitesimal fiber `ε` is not noise or a second channel — it is a **curvature selector** over a foliated family of information-exchange curves, grounded in the Landauer energy bound.
 
 ```
 Re(z') = W_a @ x  − W_b @ ε  + bias_x
@@ -177,7 +177,7 @@ Classical Tensor ──→ UTensor.from_classical() ──→ ┌─────
 
 ## The 10 Mathematical Invariants
 
-Every invariant from the [Foundational Specification](ROUND_Foundational_Specification.md) maps to a test in [`test_invariants.py`](tests/test_invariants.py):
+Every invariant from the [Foundational Specification](U-NEURON_Foundational_Specification.md) maps to a test in [`test_invariants.py`](tests/test_invariants.py):
 
 | # | Invariant | What it verifies |
 |---|-----------|-----------------|

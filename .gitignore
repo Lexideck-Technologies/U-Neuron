@@ -155,3 +155,6 @@ data/
 
 # Claude
 .claude/
+
+# Archive
+z_archive/

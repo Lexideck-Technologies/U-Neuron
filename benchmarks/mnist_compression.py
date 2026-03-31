@@ -184,6 +184,7 @@ def _linear_probe(Z: torch.Tensor, y: torch.Tensor, n_epochs: int = 40) -> float
     opt = optim.Adam(head.parameters(), lr=0.05)
     for _ in range(n_epochs):
         F.cross_entropy(head(Z), y).backward()
+        torch.nn.utils.clip_grad_norm_(list(enc.parameters()) + list(head.parameters()), max_norm=1.0)
         opt.step()
         opt.zero_grad()
     with torch.no_grad():

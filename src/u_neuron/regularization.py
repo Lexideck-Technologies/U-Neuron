@@ -74,7 +74,7 @@ class LandauerRegularizer:
             if a.shape == b.shape:
                 # Spec formula: element-wise complex modulus of state delta
                 total = total + torch.sqrt(
-                    (b.x - a.x) ** 2 + (b.eps - a.eps) ** 2
+                    (b.x - a.x) ** 2 + (b.eps - a.eps) ** 2 + 1e-8
                 ).mean()
                 n_same += 1
             else:

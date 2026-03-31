@@ -38,24 +38,26 @@ _VALID_CONSTRAINTS = ("general", "doubly_stochastic", "unitary")
 # Sinkhorn helpers (doubly_stochastic constraint)
 # ---------------------------------------------------------------------------
 
-def _sinkhorn_project(M: torch.Tensor, n_iter: int = 20) -> torch.Tensor:
-    """Project non-negative matrix M onto the doubly stochastic manifold.
+def _sinkhorn_project_log(M_abs: torch.Tensor, n_iter: int = 20) -> torch.Tensor:
+    """Project non-negative matrix M onto the doubly stochastic manifold via log-space.
 
-    Uses 20 Sinkhorn-Knopp iterations per DeepSeek mHC (arXiv:2512.24880).
-    Alternates row and column normalisation; converges to <1e-13 error
-    (Knight 2006, SIAM J. Matrix Anal.).
+    Uses logsumexp iterations per DeepSeek mHC to strictly avoid underflow vulnerabilities
+    resulting in NaNs during gradient calculation.
 
     Args:
-        M:      Non-negative matrix of shape [n, n].
+        M_abs:  Non-negative matrix of shape [n, n].
         n_iter: Number of alternating normalisation steps (default 20).
 
     Returns:
         Doubly stochastic matrix of shape [n, n].
     """
+    log_M = torch.log(M_abs + 1e-12)
+    u = torch.zeros_like(log_M[:, 0:1])
+    v = torch.zeros_like(log_M[0:1, :])
     for _ in range(n_iter):
-        M = M / (M.sum(dim=1, keepdim=True) + 1e-8)  # row-normalise
-        M = M / (M.sum(dim=0, keepdim=True) + 1e-8)  # column-normalise
-    return M
+        u = -torch.logsumexp(log_M + v, dim=1, keepdim=True)
+        v = -torch.logsumexp(log_M + u, dim=0, keepdim=True)
+    return torch.exp(log_M + u + v)
 
 
 def _apply_doubly_stochastic(W: torch.Tensor) -> torch.Tensor:
@@ -74,7 +76,7 @@ def _apply_doubly_stochastic(W: torch.Tensor) -> torch.Tensor:
         Projected weight matrix of shape [n, n].
     """
     sign = torch.where(W == 0, torch.ones_like(W), W.sign())
-    W_ds = _sinkhorn_project(W.abs(), n_iter=20)
+    W_ds = _sinkhorn_project_log(W.abs(), n_iter=20)
     return W_ds * sign
 
 
@@ -160,11 +162,11 @@ class ULinear(nn.Module):
         self.theta: nn.Parameter | None = None
 
         if constraint == "unitary":
-            # Single real symmetric generator; W_a and W_b are derived at forward time.
-            self.theta = nn.Parameter(
-                torch.empty(in_channels, in_channels)
-            )
-            nn.init.normal_(self.theta, std=0.01)
+            # PyTorch Unitary Parametrization directly enforces constraint on unconstrained manifold
+            from torch.nn.utils.parametrizations import orthogonal
+            raw_c = torch.view_as_complex(torch.randn(out_channels, in_channels, 2) * 0.01)
+            self.weight_c = nn.Parameter(raw_c)
+            orthogonal(self, "weight_c")
         else:
             # 'general' and 'doubly_stochastic' both store explicit W_a, W_b.
             self.W_a = nn.Parameter(torch.empty(out_channels, in_channels))
@@ -206,8 +208,7 @@ class ULinear(nn.Module):
             return W_a_proj, W_b_proj
 
         # unitary
-        assert self.theta is not None
-        return _get_unitary_weights(self.theta)
+        return self.weight_c.real, self.weight_c.imag
 
     # ------------------------------------------------------------------
     # Forward

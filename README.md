@@ -21,7 +21,7 @@ The cross-terms (`W_b @ x → ε'` and `W_b @ ε → x'`) are mandatory — they
 | **ε ≠ 0** | The infinitesimal fiber magnitude is clamped to ≥ 1e-8. Treating ε as zero collapses the foliation and destroys the topological structure. |
 | **Complex multiplication** | `ULinear` performs `z' = w·z + b` where `w, z, b ∈ U`. The cross-coupling terms are the topology. |
 | **Emission boundary** | At the network output, `emit = \|z\| = √(x² + ε²)` collapses to a classical tensor. This must *never* happen inside a layer. |
-| **Landauer regularization** | State changes have a thermodynamic cost: `λ·β·Σ√((Δx)² + (Δε)²)` across layers, derived from the physics of information erasure. |
+| **Landauer regularization** | State changes have a thermodynamic cost: `λ·β·Σ√((Δx)² + (Δε)² + 1e-8)` across layers, padded to prevent gradient explosions, derived from the physics of information erasure. |
 
 ---
 
@@ -128,7 +128,7 @@ model = UModel(layer_sizes=[4, 8, 8, 1], constraint="general")
 
 ### Doubly Stochastic
 
-Weights projected onto the doubly stochastic manifold via Sinkhorn-Knopp (20 iterations per forward pass, following [DeepSeek mHC](https://arxiv.org/abs/2512.24880)). Preserves signal mean with bounded amplification (~1.6×). Requires square layers (`in_channels == out_channels`). Best for classification accuracy due to implicit regularization.
+Weights projected onto the doubly stochastic manifold via a hyper-stabilized log-space Sinkhorn-Knopp algorithm (20 iterations per forward pass, following [DeepSeek mHC](https://arxiv.org/abs/2512.24880)). Preserves signal mean with bounded amplification (~1.6×). Requires square layers (`in_channels == out_channels`). Best for classification accuracy due to implicit regularization.
 
 ```python
 layer = ULinear(64, 64, constraint="doubly_stochastic")
@@ -137,7 +137,7 @@ model = UModel(layer_sizes=[4, 8, 8, 1], constraint="doubly_stochastic")
 
 ### Unitary
 
-Weights parameterized on U(n) via `W = exp(i·θ)` where `θ` is a learned real symmetric matrix. Fully norm-preserving (`|det| = 1`). Solves vanishing/exploding gradients by construction, but cannot forget — all information is preserved. Best for uncertainty quantification — the ε signal is better calibrated under this constraint.
+Weights formally parameterized on U(n) via PyTorch's native `orthogonal` parametrizations system directly substituting the complex matrix. Fully norm-preserving (`|det| = 1`). Solves vanishing/exploding gradients securely by construction, but cannot forget — all information is preserved. Best for uncertainty quantification — the ε signal is better calibrated under this constraint.
 
 ```python
 layer = ULinear(64, 64, constraint="unitary")

@@ -181,6 +181,7 @@ def train_epoch(
     loader: DataLoader,
     optimizer: optim.Optimizer,
     is_uneuron: bool,
+    device: torch.device,
 ) -> tuple[float, float]:
     """Returns (avg_task_loss, avg_reg_loss) over the epoch."""
     model.train()
@@ -188,10 +189,11 @@ def train_epoch(
     total_reg = 0.0
     n = 0
     for x, y in loader:
+        x, y = x.to(device), y.to(device)
         optimizer.zero_grad()
         pred = model(x)
         task_loss = F.mse_loss(pred, y)
-        reg_loss = model.regularization_loss() if is_uneuron else torch.tensor(0.0)
+        reg_loss = model.regularization_loss() if is_uneuron else torch.tensor(0.0, device=device)
         (task_loss + reg_loss).backward()
         nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
         optimizer.step()
@@ -204,6 +206,7 @@ def train_epoch(
 def evaluate(
     model: nn.Module,
     loader: DataLoader,
+    device: torch.device,
 ) -> tuple[float, float]:
     """Returns (avg_mse, avg_psnr_db)."""
     model.eval()
@@ -211,6 +214,7 @@ def evaluate(
     n = 0
     with torch.no_grad():
         for x, y in loader:
+            x, y = x.to(device), y.to(device)
             pred = model(x)
             mse = F.mse_loss(pred, y).item()
             total_mse += mse * x.size(0)
@@ -225,6 +229,8 @@ def evaluate(
 
 def run(args: argparse.Namespace) -> None:
     torch.manual_seed(args.seed)
+    device = torch.device(args.device)
+    print(f"  Device: {device}")
 
     print(
         f"\nGenerating synthetic k-space dataset  "
@@ -263,6 +269,7 @@ def run(args: argparse.Namespace) -> None:
     results: dict[str, dict[str, float]] = {}
 
     for name, model, is_uneuron in models_cfg:
+        model.to(device)
         n_params = count_parameters(model)
         print(f"{'=' * 60}")
         print(f"  {name}  ({n_params:,} trainable parameters)")
@@ -275,10 +282,10 @@ def run(args: argparse.Namespace) -> None:
         t0 = time.time()
 
         for epoch in range(1, args.epochs + 1):
-            task_loss, reg_loss = train_epoch(model, train_loader, optimizer, is_uneuron)
+            task_loss, reg_loss = train_epoch(model, train_loader, optimizer, is_uneuron, device)
             scheduler.step()
             if epoch % log_every == 0 or epoch == args.epochs:
-                test_mse, test_psnr = evaluate(model, test_loader)
+                test_mse, test_psnr = evaluate(model, test_loader, device)
                 elapsed = time.time() - t0
                 reg_str = f"  reg={reg_loss:.5f}" if is_uneuron else ""
                 print(
@@ -289,7 +296,7 @@ def run(args: argparse.Namespace) -> None:
                     f"  ({elapsed:.1f}s)"
                 )
 
-        final_mse, final_psnr = evaluate(model, test_loader)
+        final_mse, final_psnr = evaluate(model, test_loader, device)
         results[name] = {"mse": final_mse, "psnr": final_psnr, "params": float(n_params)}
         print()
 
@@ -324,6 +331,11 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--lr", type=float, default=2**-9, help="Adam learning rate (default: 2^-9)")
     p.add_argument("--seed", type=int, default=42)
     p.add_argument(
+        "--device", type=str,
+        default="cuda" if torch.cuda.is_available() else "cpu",
+        help="Compute device (default: cuda if available, else cpu)",
+    )
+    p.add_argument(
         "--constraint", type=str, default="general",
         choices=["general", "unitary", "doubly_stochastic"],
         help="Weight manifold constraint (default: general)",
@@ -332,4 +344,7 @@ def parse_args() -> argparse.Namespace:
 
 
 if __name__ == "__main__":
+    import sys
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(errors="replace")
     run(parse_args())

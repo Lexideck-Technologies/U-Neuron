@@ -252,12 +252,13 @@ def _probe_eps_per_layer(model: UNeuronTomo, loader: DataLoader) -> None:
     eps_mean and eps_std per layer so that eps variance development can be
     diagnosed after training.
     """
+    device = next(model.parameters()).device
     inner = model.backbone  # UModel
     inner.eval()
     layer_eps: list[list[torch.Tensor]] = [[] for _ in inner.layers]
     with torch.no_grad():
         for x, _ in loader:
-            z: UTensor = UTensor.from_classical(x)
+            z: UTensor = UTensor.from_classical(x.to(device))
             for i, layer in enumerate(inner.layers):
                 z = inner.activation_fn(layer(z))
                 layer_eps[i].append(z.eps.clone())
@@ -278,12 +279,13 @@ def _forward_to_final_utensor(
     loader: DataLoader,
 ) -> list[UTensor]:
     """Collect the final U-space activations (before emission) for all batches."""
+    device = next(model.parameters()).device
     inner = model.backbone  # UModel
     inner.eval()
     results: list[UTensor] = []
     with torch.no_grad():
         for x, _ in loader:
-            z: UTensor = UTensor.from_classical(x)
+            z: UTensor = UTensor.from_classical(x.to(device))
             for layer in inner.layers:
                 z = inner.activation_fn(layer(z))
             results.append(UTensor(z.x.clone(), z.eps.clone()))
@@ -303,11 +305,13 @@ def eps_error_correlation(
     batches = _forward_to_final_utensor(model, loader)
     eps_scores = torch.cat([z.eps.mean(dim=-1) for z in batches])  # [N]
 
+    device = next(model.parameters()).device
     model.eval()
     all_preds: list[torch.Tensor] = []
     all_targets: list[torch.Tensor] = []
     with torch.no_grad():
         for x, y in loader:
+            x, y = x.to(device), y.to(device)
             all_preds.append(model(x))
             all_targets.append(y)
     preds = torch.cat(all_preds)
@@ -329,6 +333,7 @@ def train_epoch(
     loader: DataLoader,
     optimizer: optim.Optimizer,
     is_uneuron: bool,
+    device: torch.device,
 ) -> tuple[float, float]:
     """Returns (avg_task_loss, avg_reg_loss).
 
@@ -339,10 +344,11 @@ def train_epoch(
     total_reg = 0.0
     n = 0
     for x, y in loader:
+        x, y = x.to(device), y.to(device)
         optimizer.zero_grad()
         pred = model(x)
         task = F.mse_loss(pred, y)
-        reg = model.regularization_loss() if is_uneuron else torch.tensor(0.0)
+        reg = model.regularization_loss() if is_uneuron else torch.tensor(0.0, device=device)
         (task + reg).backward()
         nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
         optimizer.step()
@@ -356,6 +362,7 @@ def evaluate(
     model: nn.Module,
     loader: DataLoader,
     n_qubits: int,
+    device: torch.device,
 ) -> tuple[float, float]:
     """Returns (mean_fidelity, mse_on_pauli_expectations)."""
     model.eval()
@@ -363,6 +370,7 @@ def evaluate(
     all_targets: list[torch.Tensor] = []
     with torch.no_grad():
         for x, y in loader:
+            x, y = x.to(device), y.to(device)
             all_preds.append(model(x))
             all_targets.append(y)
     preds = torch.cat(all_preds)
@@ -378,6 +386,8 @@ def evaluate(
 
 def run(args: argparse.Namespace) -> None:
     torch.manual_seed(args.seed)
+    device = torch.device(args.device)
+    print(f"  Device: {device}")
     n_qubits = args.n_qubits
 
     print(
@@ -412,6 +422,7 @@ def run(args: argparse.Namespace) -> None:
     results: dict[str, dict] = {}
 
     for name, model, is_uneuron in models_cfg:
+        model.to(device)
         n_params = count_parameters(model)
         print(f"{'=' * 60}")
         print(f"  {name}  ({n_params:,} trainable parameters)")
@@ -423,10 +434,10 @@ def run(args: argparse.Namespace) -> None:
         t0 = time.time()
 
         for epoch in range(1, args.epochs + 1):
-            task_loss, reg_loss = train_epoch(model, train_loader, optimizer, is_uneuron)
+            task_loss, reg_loss = train_epoch(model, train_loader, optimizer, is_uneuron, device)
             scheduler.step()
             if epoch % log_every == 0 or epoch == args.epochs:
-                fid, mse = evaluate(model, test_loader, n_qubits)
+                fid, mse = evaluate(model, test_loader, n_qubits, device)
                 reg_str = f"  reg={reg_loss:.5f}" if is_uneuron else ""
                 print(
                     f"  ep {epoch:3d}/{args.epochs}"
@@ -436,7 +447,7 @@ def run(args: argparse.Namespace) -> None:
                     f"  ({time.time() - t0:.1f}s)"
                 )
 
-        fid, mse = evaluate(model, test_loader, n_qubits)
+        fid, mse = evaluate(model, test_loader, n_qubits, device)
         results[name] = {"fidelity": fid, "mse": mse, "params": n_params}
         print()
 
@@ -484,14 +495,15 @@ def run(args: argparse.Namespace) -> None:
             te_ld = DataLoader(te_ds, batch_size=args.batch_size)
 
             sweep_model = UNeuronTomo(n_ops, hidden=args.hidden, constraint=args.constraint)
+            sweep_model.to(device)
             sweep_opt = optim.Adam(sweep_model.parameters(), lr=args.lr)
             sweep_sched = optim.lr_scheduler.CosineAnnealingLR(
                 sweep_opt, T_max=args.epochs
             )
             for _ in range(args.epochs):
-                train_epoch(sweep_model, tr_ld, sweep_opt, is_uneuron=True)
+                train_epoch(sweep_model, tr_ld, sweep_opt, True, device)
                 sweep_sched.step()
-            fid_s, mse_s = evaluate(sweep_model, te_ld, n_qubits)
+            fid_s, mse_s = evaluate(sweep_model, te_ld, n_qubits, device)
             batches_s = _forward_to_final_utensor(sweep_model, te_ld)
             eps_mean_s = (
                 torch.cat([z.eps.mean(dim=-1) for z in batches_s]).mean().item()
@@ -564,6 +576,11 @@ def parse_args() -> argparse.Namespace:
     )
     p.add_argument("--seed", type=int, default=42)
     p.add_argument(
+        "--device", type=str,
+        default="cuda" if torch.cuda.is_available() else "cpu",
+        help="Compute device (default: cuda if available, else cpu)",
+    )
+    p.add_argument(
         "--constraint", type=str, default="unitary",
         choices=["general", "unitary", "doubly_stochastic"],
         help="Weight manifold constraint (default: unitary)",
@@ -572,4 +589,7 @@ def parse_args() -> argparse.Namespace:
 
 
 if __name__ == "__main__":
+    import sys
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(errors="replace")
     run(parse_args())

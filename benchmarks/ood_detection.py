@@ -177,12 +177,13 @@ def _forward_to_final_utensor(
 
     Returns a list of final-layer UTensors (one per batch).
     """
+    device = next(model.parameters()).device
     inner = model.model
     inner.eval()
     results: list[UTensor] = []
     with torch.no_grad():
         for x, _ in loader:
-            z: UTensor = UTensor.from_classical(x)
+            z: UTensor = UTensor.from_classical(x.to(device))
             for layer in inner.layers:
                 z = inner.activation_fn(layer(z))
             results.append(z)
@@ -209,11 +210,12 @@ def get_eps_max_scores(model: UNeuronClassifier, loader: DataLoader) -> torch.Te
 
 def get_msp_scores(model: nn.Module, loader: DataLoader) -> torch.Tensor:
     """MSP baseline: 1 − max(softmax(logits)).  Higher = more uncertain = more OOD."""
+    device = next(model.parameters()).device
     model.eval()
     scores = []
     with torch.no_grad():
         for x, _ in loader:
-            logits = model(x)
+            logits = model(x.to(device))
             max_prob = F.softmax(logits, dim=-1).max(dim=-1).values
             scores.append((1.0 - max_prob).cpu())
     return torch.cat(scores)
@@ -223,10 +225,12 @@ def get_mc_dropout_scores(
     model: MCDropoutMLP, loader: DataLoader, n_mc: int = 20
 ) -> torch.Tensor:
     """MC Dropout: mean predictive variance over n_mc stochastic passes."""
+    device = next(model.parameters()).device
     model.train()  # keep dropout active at inference time
     scores = []
     with torch.no_grad():
         for x, _ in loader:
+            x = x.to(device)
             preds = torch.stack([
                 F.softmax(model(x), dim=-1) for _ in range(n_mc)
             ])  # [n_mc, B, C]
@@ -252,11 +256,13 @@ def compute_auroc(in_scores: torch.Tensor, ood_scores: torch.Tensor) -> float:
 
 
 def eval_accuracy(model: nn.Module, loader: DataLoader) -> float:
+    device = next(model.parameters()).device
     model.eval()
     correct = 0
     total = 0
     with torch.no_grad():
         for x, y in loader:
+            x, y = x.to(device), y.to(device)
             pred = model(x).argmax(dim=-1)
             correct += (pred == y).sum().item()
             total += y.size(0)
@@ -276,15 +282,17 @@ def train_epoch(
     loader: DataLoader,
     optimizer: optim.Optimizer,
     is_uneuron: bool,
+    device: torch.device,
 ) -> float:
     model.train()
     total_loss = 0.0
     n = 0
     for x, y in loader:
+        x, y = x.to(device), y.to(device)
         optimizer.zero_grad()
         logits = model(x)
         ce = F.cross_entropy(logits, y)
-        reg = model.regularization_loss() if is_uneuron else torch.tensor(0.0)
+        reg = model.regularization_loss() if is_uneuron else torch.tensor(0.0, device=device)
         (ce + reg).backward()
         nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
         optimizer.step()
@@ -299,6 +307,8 @@ def train_epoch(
 
 def run(args: argparse.Namespace) -> None:
     torch.manual_seed(args.seed)
+    device = torch.device(args.device)
+    print(f"  Device: {device}")
 
     print("\nLoading and projecting CIFAR-10 / CIFAR-100...")
     train_loader, in_loader, ood_loader = load_data(
@@ -321,6 +331,7 @@ def run(args: argparse.Namespace) -> None:
     accuracies: dict[str, float] = {}
 
     for name, model, is_uneuron in models_cfg:
+        model.to(device)
         n_params = count_parameters(model)
         print(f"{'=' * 60}")
         print(f"  {name}  ({n_params:,} trainable parameters)")
@@ -332,7 +343,7 @@ def run(args: argparse.Namespace) -> None:
         t0 = time.time()
 
         for epoch in range(1, args.epochs + 1):
-            loss = train_epoch(model, train_loader, optimizer, is_uneuron)
+            loss = train_epoch(model, train_loader, optimizer, is_uneuron, device)
             scheduler.step()
             if epoch % log_every == 0 or epoch == args.epochs:
                 acc = eval_accuracy(model, in_loader)
@@ -449,6 +460,11 @@ def parse_args() -> argparse.Namespace:
     )
     p.add_argument("--seed", type=int, default=42)
     p.add_argument(
+        "--device", type=str,
+        default="cuda" if torch.cuda.is_available() else "cpu",
+        help="Compute device (default: cuda if available, else cpu)",
+    )
+    p.add_argument(
         "--constraint", type=str, default="general",
         choices=["general", "unitary", "doubly_stochastic"],
         help="Weight manifold constraint (default: general)",
@@ -457,4 +473,7 @@ def parse_args() -> argparse.Namespace:
 
 
 if __name__ == "__main__":
+    import sys
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(errors="replace")
     run(parse_args())

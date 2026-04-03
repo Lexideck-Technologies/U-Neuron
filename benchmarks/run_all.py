@@ -1,123 +1,116 @@
-"""
-Run all 4 benchmarks x 3 constraint modes = 12 configurations.
-Saves full raw output per benchmark to benchmarks/raw_outputs/ and
-writes a combined results file.
+"""Run all 4 benchmarks × 3 constraints = 12 configurations in parallel threads.
+
+Saves per-job output to benchmarks/raw_outputs/ and streams to console with
+a per-job prefix so interleaved lines stay readable.
 
 Usage:
     python benchmarks/run_all.py
+    python benchmarks/run_all.py --device cuda
 """
 from __future__ import annotations
 
+import argparse
 import os
 import subprocess
 import sys
+import threading
 import time
 from pathlib import Path
 
-BENCHMARKS = [
-    ("quantum_tomography", "quantum_tomography.py", []),
-    ("kspace_reconstruction", "kspace_reconstruction.py", []),
-    ("mnist_compression", "mnist_compression.py", ["--n-seeds", "1", "--epochs", "15"]),
-    ("ood_detection", "ood_detection.py", ["--epochs", "20"]),
+import torch
+
+BENCH_DIR = Path(__file__).parent
+RAW_DIR = BENCH_DIR / "raw_outputs"
+
+# (label_prefix, script, extra_args)
+BENCH_SCRIPTS = [
+    ("quantum_tomography",   "quantum_tomography.py",   []),
+    ("kspace_reconstruction","kspace_reconstruction.py", []),
+    ("mnist_compression",    "mnist_compression.py",    ["--n-seeds", "1", "--epochs", "15"]),
+    ("ood_detection",        "ood_detection.py",        ["--epochs", "20"]),
 ]
 
 CONSTRAINTS = ["general", "unitary", "doubly_stochastic"]
 
-BENCH_DIR = Path(__file__).parent
-RAW_DIR = BENCH_DIR / "raw_outputs"
-COMBINED_FILE = BENCH_DIR / "all_results.txt"
+_print_lock = threading.Lock()
 
 
-def run_one(name: str, script: str, extra_args: list[str], constraint: str) -> tuple[str, float, int]:
-    """Run a single benchmark, stream to console AND save to file. Returns (label, elapsed, returncode)."""
-    label = f"{name}__{constraint}"
+def run_job(label: str, cmd: list[str]) -> None:
     out_file = RAW_DIR / f"{label}.txt"
-
-    cmd = [
-        sys.executable, str(BENCH_DIR / script),
-        "--constraint", constraint,
-    ] + extra_args
-
-    header = (
-        f"\n{'#' * 70}\n"
-        f"# {name} [{constraint}]\n"
-        f"# CMD: {' '.join(cmd)}\n"
-        f"{'#' * 70}\n"
-    )
-    print(header, flush=True)
-
-    t0 = time.time()
-    # Use Popen so we can stream AND capture
     env = os.environ.copy()
     env["PYTHONIOENCODING"] = "utf-8"
-    proc = subprocess.Popen(
-        cmd,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-        cwd=str(BENCH_DIR.parent),
-        env=env,
-    )
+    env["PYTHONUNBUFFERED"] = "1"
+    t0 = time.time()
+    with _print_lock:
+        print(f"[START] {label}", flush=True)
 
-    lines: list[str] = []
-    assert proc.stdout is not None
-    for line in proc.stdout:
-        print(line, end="", flush=True)
-        lines.append(line)
-
-    proc.wait()
-    elapsed = time.time() - t0
-
-    # Save raw output
     with open(out_file, "w", encoding="utf-8") as f:
-        f.write(header)
-        f.writelines(lines)
+        f.write(f"# {label}\n# CMD: {' '.join(cmd)}\n")
+
+        proc = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            cwd=str(BENCH_DIR.parent),
+            env=env,
+        )
+
+        assert proc.stdout is not None
+        enc = sys.stdout.encoding or "utf-8"
+        for line in proc.stdout:
+            f.write(line)
+            f.flush()
+            safe = line.encode(enc, errors="replace").decode(enc)
+            with _print_lock:
+                print(f"[{label}] {safe}", end="", flush=True)
+
+        proc.wait()
+        elapsed = time.time() - t0
         f.write(f"\n>>> Exit code: {proc.returncode}  Elapsed: {elapsed:.1f}s\n")
 
-    status = "OK" if proc.returncode == 0 else f"FAIL (rc={proc.returncode})"
-    print(f"\n>>> {name} [{constraint}]  {status}  ({elapsed:.1f}s)\n", flush=True)
-    return label, elapsed, proc.returncode
+    status = "OK" if proc.returncode == 0 else f"FAIL(rc={proc.returncode})"
+    with _print_lock:
+        print(f"[DONE]  {label}  {status}  ({elapsed:.1f}s)", flush=True)
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="Run all benchmarks x 3 constraints in parallel threads"
+    )
+    parser.add_argument(
+        "--device", type=str,
+        default="cuda" if torch.cuda.is_available() else "cpu",
+        help="Compute device passed to each benchmark (default: cuda if available, else cpu)",
+    )
+    args = parser.parse_args()
+
     RAW_DIR.mkdir(exist_ok=True)
+    print(f"Device: {args.device}  |  Launching 12 jobs ({len(BENCH_SCRIPTS)} benchmarks × {len(CONSTRAINTS)} constraints)\n")
 
-    summary: list[tuple[str, float, int]] = []
-    total_t0 = time.time()
-
-    for name, script, extra in BENCHMARKS:
+    jobs: list[tuple[str, list[str]]] = []
+    for bench_name, script, extra_args in BENCH_SCRIPTS:
         for constraint in CONSTRAINTS:
-            label, elapsed, rc = run_one(name, script, extra, constraint)
-            summary.append((label, elapsed, rc))
+            label = f"{bench_name}__{constraint}"
+            cmd = [
+                sys.executable, str(BENCH_DIR / script),
+                "--constraint", constraint,
+                "--device", args.device,
+            ] + extra_args
+            jobs.append((label, cmd))
 
-    total_elapsed = time.time() - total_t0
+    threads = []
+    for label, cmd in jobs:
+        t = threading.Thread(target=run_job, args=(label, cmd))
+        t.start()
+        threads.append(t)
 
-    # Build combined file from raw outputs
-    with open(COMBINED_FILE, "w", encoding="utf-8") as out:
-        out.write(f"GRAND SUMMARY -- All Benchmarks x All Constraints\n")
-        out.write(f"Total wall time: {total_elapsed:.0f}s ({total_elapsed/60:.1f} min)\n")
-        out.write("=" * 80 + "\n\n")
+    for t in threads:
+        t.join()
 
-        for label, elapsed, rc in summary:
-            raw_file = RAW_DIR / f"{label}.txt"
-            out.write(f"--- {label}  ({elapsed:.1f}s, rc={rc}) ---\n")
-            if raw_file.exists():
-                out.write(raw_file.read_text(encoding="utf-8"))
-            out.write("\n\n")
-
-        out.write("=" * 80 + "\n")
-        out.write("TIMING SUMMARY\n")
-        out.write(f"{'Label':<45} {'Time':>8} {'Status':>8}\n")
-        out.write("-" * 65 + "\n")
-        for label, elapsed, rc in summary:
-            st = "OK" if rc == 0 else "FAIL"
-            out.write(f"{label:<45} {elapsed:>7.1f}s {st:>8}\n")
-        out.write(f"\nTotal: {total_elapsed:.0f}s ({total_elapsed/60:.1f} min)\n")
-
-    print(f"\nRaw outputs saved to: {RAW_DIR}")
-    print(f"Combined results saved to: {COMBINED_FILE}")
+    print(f"\nAll jobs finished. Raw outputs in: {RAW_DIR}", flush=True)
 
 
 if __name__ == "__main__":

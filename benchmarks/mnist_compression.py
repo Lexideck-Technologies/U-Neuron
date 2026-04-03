@@ -166,10 +166,11 @@ def _collect_layer_utensors(
     x: torch.Tensor,
 ) -> list[UTensor]:
     """Forward x through all ULinear+activation layers; return one UTensor per layer."""
+    device = next(model.parameters()).device
     inner = model.model
     inner.eval()
     with torch.no_grad():
-        z: UTensor = UTensor.from_classical(x)
+        z: UTensor = UTensor.from_classical(x.to(device))
         layers_out: list[UTensor] = []
         for layer in inner.layers:
             z = inner.activation_fn(layer(z))
@@ -179,8 +180,10 @@ def _collect_layer_utensors(
 
 def _linear_probe(Z: torch.Tensor, y: torch.Tensor, n_epochs: int = 40) -> float:
     """Train a linear classifier on Z; return top-1 accuracy on the same set."""
+    device = Z.device
     n_classes = int(y.max().item()) + 1
-    head = nn.Linear(Z.shape[1], n_classes)
+    head = nn.Linear(Z.shape[1], n_classes).to(device)
+    y = y.to(device)
     opt = optim.Adam(head.parameters(), lr=0.05)
     for _ in range(n_epochs):
         F.cross_entropy(head(Z), y).backward()
@@ -200,6 +203,7 @@ def train_epoch(
     loader: DataLoader,
     optimizer: optim.Optimizer,
     is_uneuron: bool,
+    device: torch.device,
 ) -> tuple[float, float]:
     """Returns (avg_cross_entropy, avg_landauer_cost)."""
     model.train()
@@ -207,10 +211,11 @@ def train_epoch(
     total_reg = 0.0
     n = 0
     for x, y in loader:
+        x, y = x.to(device), y.to(device)
         optimizer.zero_grad()
         logits = model(x)
         ce = F.cross_entropy(logits, y)
-        reg = model.regularization_loss() if is_uneuron else torch.tensor(0.0)
+        reg = model.regularization_loss() if is_uneuron else torch.tensor(0.0, device=device)
         (ce + reg).backward()
         nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
         optimizer.step()
@@ -220,11 +225,12 @@ def train_epoch(
     return total_ce / n, total_reg / n
 
 
-def eval_accuracy(model: nn.Module, loader: DataLoader) -> float:
+def eval_accuracy(model: nn.Module, loader: DataLoader, device: torch.device) -> float:
     model.eval()
     correct = total = 0
     with torch.no_grad():
         for x, y in loader:
+            x, y = x.to(device), y.to(device)
             correct += (model(x).argmax(-1) == y).sum().item()
             total += y.size(0)
     return correct / total
@@ -242,6 +248,8 @@ def run(args: argparse.Namespace) -> None:
     import numpy as np
 
     torch.manual_seed(args.seed)
+    device = torch.device(args.device)
+    print(f"  Device: {device}")
 
     print(f"\nLoading and projecting MNIST...")
     train_loader, test_loader, probe_x, probe_y = load_mnist(
@@ -249,6 +257,8 @@ def run(args: argparse.Namespace) -> None:
         data_dir=args.data_dir,
         batch_size=args.batch_size,
     )
+    probe_x = probe_x.to(device)
+    probe_y = probe_y.to(device)
     print(f"  PCA dimension: {args.n_pca}")
     print(f"  Seeds per config: {args.n_seeds}\n")
 
@@ -270,6 +280,7 @@ def run(args: argparse.Namespace) -> None:
             torch.manual_seed(run_seed)
 
             model = UNeuronClassifier(args.n_pca, hidden=args.hidden, lambda_reg=lam, constraint=args.constraint)
+            model.to(device)
             optimizer = optim.Adam(model.parameters(), lr=args.lr)
             scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs)
 
@@ -278,11 +289,11 @@ def run(args: argparse.Namespace) -> None:
 
             total_landauer = 0.0
             for epoch in range(1, args.epochs + 1):
-                ce, reg = train_epoch(model, train_loader, optimizer, is_uneuron=True)
+                ce, reg = train_epoch(model, train_loader, optimizer, True, device)
                 total_landauer += reg
                 scheduler.step()
 
-            acc = eval_accuracy(model, test_loader)
+            acc = eval_accuracy(model, test_loader, device)
             seed_accs.append(acc)
             seed_landauer.append(total_landauer)
 
@@ -320,14 +331,15 @@ def run(args: argparse.Namespace) -> None:
     for seed_i in range(args.n_seeds):
         torch.manual_seed(args.seed + seed_i * 1000 + 500)
         mlp = MLPBaseline(args.n_pca, hidden=args.hidden)
+        mlp.to(device)
         opt_mlp = optim.Adam(mlp.parameters(), lr=args.lr)
         sched_mlp = optim.lr_scheduler.CosineAnnealingLR(opt_mlp, T_max=args.epochs)
         if seed_i == 0:
             print(f"    ({count_parameters(mlp):,} params)")
         for _epoch in range(1, args.epochs + 1):
-            train_epoch(mlp, train_loader, opt_mlp, is_uneuron=False)
+            train_epoch(mlp, train_loader, opt_mlp, False, device)
             sched_mlp.step()
-        acc = eval_accuracy(mlp, test_loader)
+        acc = eval_accuracy(mlp, test_loader, device)
         mlp_accs.append(acc)
         print(f"    seed {seed_i+1}/{args.n_seeds}  acc={acc:.3f}")
 
@@ -409,6 +421,11 @@ def parse_args() -> argparse.Namespace:
     )
     p.add_argument("--seed", type=int, default=42)
     p.add_argument(
+        "--device", type=str,
+        default="cuda" if torch.cuda.is_available() else "cpu",
+        help="Compute device (default: cuda if available, else cpu)",
+    )
+    p.add_argument(
         "--constraint", type=str, default="general",
         choices=["general", "unitary", "doubly_stochastic"],
         help="Weight manifold constraint (default: general)",
@@ -417,5 +434,8 @@ def parse_args() -> argparse.Namespace:
 
 
 if __name__ == "__main__":
+    import sys
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(errors="replace")
     run(parse_args())
 

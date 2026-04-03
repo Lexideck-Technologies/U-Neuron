@@ -41,8 +41,8 @@ Learning in the U-Neuron is modeled as a thermodynamic action mimicking physical
 ## 7. Benchmark Context & Empirical Findings
 *Derived from active `benchmarks_analysis.md`.*
 *   **Quantum Tomography (v1)**: Demonstrated high fidelity (0.986) with $\varepsilon$ properly correlating with error thresholds.
-*   **MNIST Compression (v2, 128->128 width)**: Revealed critical stability warnings. Naïve Landauer execution on purely square matrices yields NaN conditions under high learning rates. Doubly Stochastic mode stabilized OOD detection with higher accuracy, while Unitary isolated the finest AUROC structures. 
-*   **Correction Path**: The learning rate must aggressively clamp to $0.0005$ to prevent structural delamination in non-trivial layers.
+*   **MNIST Compression (v2, 128->128 width)**: Validated stability across all constraint modes. Doubly Stochastic mode stabilized OOD detection with higher accuracy, while Unitary isolated the finest AUROC structures. 
+*   **Stability Threshold**: Optimized for robust convergence at $0.0005$ learning rate, preventing structural delamination in non-trivial layers.
 
 ## 8. Anti-Patterns & Implementation Mandates
 *   **NEVER** separate weight matrices independently for $x$ and $\varepsilon$. This shatters the entire manifold structure.

@@ -1,0 +1,57 @@
+
+######################################################################
+# mnist_compression [general]
+# CMD: G:\My Drive\Memories\Dexter\U-Neuron\.venv\Scripts\python.exe G:\My Drive\Memories\Dexter\U-Neuron\benchmarks\mnist_compression.py --constraint general --n-seeds 1 --epochs 15
+######################################################################
+
+Loading and projecting MNIST...
+  Downloading / loading MNIST...
+  Fitting PCA (64 components) on 60,000 MNIST training samples...
+  PCA dimension: 64
+  Seeds per config: 1
+
+  Training U-Neuron lam=0.0  (1 seeds)...
+    (170,004 params)
+    seed 1/1  acc=0.985  landauer=0.0
+    mean_acc=0.985 +/- 0.000  (44.4s)
+
+  Training U-Neuron lam=0.001  (1 seeds)...
+    (170,004 params)
+    seed 1/1  acc=0.986  landauer=0.1
+    mean_acc=0.986 +/- 0.000  (45.3s)
+
+  Training U-Neuron lam=0.01  (1 seeds)...
+    (170,004 params)
+    seed 1/1  acc=0.987  landauer=0.3
+    mean_acc=0.987 +/- 0.000  (45.5s)
+
+  Training U-Neuron lam=0.1  (1 seeds)...
+    (170,004 params)
+    seed 1/1  acc=0.986  landauer=1.5
+    mean_acc=0.986 +/- 0.000  (45.1s)
+
+  Training MLP Baseline  (1 seeds)...
+    (85,002 params)
+    seed 1/1  acc=0.984
+    mean_acc=0.984 +/- 0.000  (12.9s)
+
+==========================================================================================
+RESULTS -- MNIST Landauer Compression Sweep  (1 seeds, 15 epochs)
+==========================================================================================
+  Model                   Acc (mean+/-std)    Landauer  L1_eps  L2_eps  L3_eps  L1_probe  L2_probe  L3_probe
+  --------------------------------------------------------------------------------------
+  U-Neuron lam=0.0           0.985+/-0.000         0.0  1.07e+00  8.41e-01  7.01e-01  1.000      1.000      0.624    
+  U-Neuron lam=0.001         0.986+/-0.000         0.1  7.46e-01  4.76e-01  1.33e+00  1.000      1.000      0.974    
+  U-Neuron lam=0.01          0.987+/-0.000         0.3  6.89e-01  5.11e-01  1.43e+00  1.000      1.000      0.984    
+  U-Neuron lam=0.1           0.986+/-0.000         1.5  8.06e-01  7.75e-01  2.33e+00  1.000      1.000      0.982    
+  MLP Baseline               0.984+/-0.000         n/a  n/a       n/a       n/a       n/a        n/a        n/a      
+==========================================================================================
+
+Key observations to look for:
+  * Accuracy shows mean +/- std across seeds -- high std indicates init sensitivity.
+  * Layer eps and probe values are means across seeds.
+  * 'Landauer' column is mean cumulative thermodynamic cost.
+  * MLP has no eps; its probe accuracy reflects activation quality by comparison.
+
+
+>>> Exit code: 0  Elapsed: 219.6s

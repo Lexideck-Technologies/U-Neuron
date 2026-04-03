@@ -14,30 +14,45 @@ JOBS = [
 ]
 
 
+_print_lock = threading.Lock()
+
+
 def run_job(label, cmd):
     out_file = RAW_DIR / f"{label}.txt"
     env = os.environ.copy()
     env["PYTHONIOENCODING"] = "utf-8"
+    env["PYTHONUNBUFFERED"] = "1"
     t0 = time.time()
-    print(f"[START] {label}", flush=True)
-    proc = subprocess.run(
-        cmd,
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-        cwd=str(BENCH_DIR.parent),
-        env=env,
-    )
-    elapsed = time.time() - t0
+    with _print_lock:
+        print(f"[START] {label}", flush=True)
+
     with open(out_file, "w", encoding="utf-8") as f:
         f.write(f"# {label}\n# CMD: {' '.join(cmd)}\n")
-        f.write(proc.stdout)
-        if proc.stderr:
-            f.write(f"\n--- STDERR ---\n{proc.stderr}\n")
+
+        proc = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            cwd=str(BENCH_DIR.parent),
+            env=env,
+        )
+
+        for line in proc.stdout:
+            f.write(line)
+            f.flush()
+            with _print_lock:
+                print(f"[{label}] {line}", end="", flush=True)
+
+        proc.wait()
+        elapsed = time.time() - t0
         f.write(f"\n>>> Exit code: {proc.returncode}  Elapsed: {elapsed:.1f}s\n")
+
     status = "OK" if proc.returncode == 0 else f"FAIL(rc={proc.returncode})"
-    print(f"[DONE]  {label}  {status}  ({elapsed:.1f}s)", flush=True)
+    with _print_lock:
+        print(f"[DONE]  {label}  {status}  ({elapsed:.1f}s)", flush=True)
 
 
 def main():

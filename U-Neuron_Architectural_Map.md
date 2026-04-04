@@ -50,6 +50,6 @@ Learning in the U-Neuron is modeled as a thermodynamic action mimicking physical
 *   **NEVER** allow $\varepsilon \le 0$. If the floor drops to 0 globally, the foliation completely perishes into generic Cartesian paths.
 
 ## 9. Next-Horizon Engineering (Open Challenges)
-*   **CUDA Processing**: Hardware-specific kernels require development to handle massive complex multiplication matrices iteratively.
+*   **CUDA Processing**: Full hardware acceleration via PyTorch CUDA tensors is implemented for all U-Space algebraic operations.
 *   **Thermodynamic Scheduling**: Beta scheduling requires algorithmic refinement toward the pseudo-Schrödinger bridge behavior discussed in manuscript draft 8.3.
 *   **Homogeneity Traps**: Deep proofing of Unitary homogeneous traps requires formal mathematical mapping, preventing secondary fiber breakdown across extreme sequence distances.

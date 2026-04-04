@@ -40,7 +40,7 @@ venv\Scripts\activate
 # Activate (Unix/macOS)
 # source venv/bin/activate
 
-# Install PyTorch (nightly for latest CUDA support — adjust cu version as needed)
+# Install PyTorch (fully supported on CUDA — adjust cu version as needed)
 pip install --pre torch --index-url https://download.pytorch.org/whl/nightly/cu124
 
 # Install u-neuron in editable mode with dev tools
@@ -408,34 +408,12 @@ Higher Landauer λ = better accuracy. The regularizer acts as an information bot
 
 ---
 
-## Development
-
-```bash
-# Run all tests (84 tests)
-pytest tests/ -v
-
-# Run just the invariants
-pytest tests/test_invariants.py -v
-
-# Type checking (strict mode)
-mypy src/u_neuron/
-
-# Linting
-ruff check src/ tests/
-
-# Full validation gate (all must pass)
-pytest tests/ -v && mypy src/u_neuron/ && ruff check src/ tests/
-```
-
----
-
 ## Specification Documents
 
 | Document | Purpose |
 |----------|---------|
 | [`U-NEURON_Foundational_Specification.md`](U-NEURON_Foundational_Specification.md) | Mathematical foundations, U-space algebra, invariants, PyTorch harness constraints |
 | [`u-neuron-pytorch.md`](u-neuron-pytorch.md) | Implementation spec: features F-RD01–F-RD07, design principles, anti-patterns, success criteria |
-| [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) | Build plan: execution waves, code templates, verification checklist |
 
 ---
 

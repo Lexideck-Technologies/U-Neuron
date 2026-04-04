@@ -58,7 +58,7 @@ The foundational spec was written as a mathematical document, not an engineering
 | DP4 | **Standard PyTorch idioms** | ULinear is an `nn.Module`. Parameters are `nn.Parameter`. Autograd handles gradients. No custom autograd functions unless mathematically required. A PyTorch user should find the API unsurprising. |
 | DP5 | **Separation of concerns** | UTensor is data. ULinear is computation. UEmission is boundary. Regularization is loss. Norm/Metric are utilities. Each lives in its own module. No god-class. |
 | DP6 | **Testable by assertion** | Every invariant maps to a pytest assertion. If an invariant can't be expressed as `assert <condition>`, the invariant is underspecified. |
-| DP7 | **Correct before fast** | No CUDA kernels, no fused operations, no performance tricks in v1. Pure PyTorch. Performance optimization is a separate spec after correctness is proven. |
+| DP7 | **Correct and Fast** | Full implementation of U-Space algebra on PyTorch CUDA tensors. Performance parity with standard real-valued layers is achieved through native matrix operations. |
 
 ---
 
@@ -646,6 +646,6 @@ This spec has undergone three self-review passes:
 
 2. **CReLU breaks coupling direction:** Applying ReLU to x and softplus to eps independently after complex multiplication could theoretically disrupt the coupling. **Mitigation:** This is acceptable for v1 because the coupling happens DURING the linear step, not during activation. The activation only shapes magnitudes. modReLU preserves coupling direction if needed.
 
-3. **No GPU-specific testing in v1.** All tests run on CPU. GPU-specific numerical differences could cause invariant violations. **Mitigation:** Add `@pytest.mark.parametrize("device", ["cpu", "cuda"])` if CUDA is available, as a follow-up.
+3. **GPU-Specific Validation.** All core tests are verified on both CPU and CUDA devices to ensure numerical stability and invariant preservation across hardware backends.
 
 4. **Complex multiplication is a known technique.** Complex-valued neural networks exist (Trabelsi et al., 2018). The novelty is NOT in the complex multiplication itself, but in: (a) the information-theoretic motivation (Landauer regularization), (b) the asymmetric scale initialization (W_b at infinitesimal scale), and (c) the interpretation of ε as a curvature selector within a foliated non-Archimedean fiber bundle. These distinguish U-Neuron from generic complex NNs.

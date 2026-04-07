@@ -159,6 +159,9 @@ data/
 # Archive
 z_archive/
 
+# Research
+research/
+
 # Agent artifacts
 implementation_plan.md
 IMPLEMENTATION_PLAN.md

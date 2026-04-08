@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>U-Space Explorer &mdash; z = x + &epsilon;i</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body { width:100vw; height:100vh; background:#000; overflow:hidden; }
+
+#glc {
+  position: absolute; top:0; left:0;
+  width:100%; height:100%;
+  display:block;
+}
+#hud {
+  position: absolute; top:0; left:0;
+  width:100%; height:100%;
+  pointer-events: none;
+}
+
+/* LANDING OVERLAY */
+#overlay {
+  position: absolute; top:0; left:0;
+  width:100%; height:100%;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  background: rgba(0,0,0,0.93);
+  font-family: 'Courier New', monospace;
+  color: #e0e0e0;
+  z-index: 30;
+  cursor: pointer;
+  transition: opacity 0.5s;
+}
+#overlay.gone { opacity:0; pointer-events:none; }
+
+.ov-eyebrow {
+  font-size: 9px; letter-spacing: 4px;
+  text-transform: uppercase; color: #333;
+  margin-bottom: 12px;
+}
+.ov-title {
+  font-size: 24px; letter-spacing: 7px;
+  text-transform: uppercase;
+  color: #00ffff;
+  text-shadow: 0 0 24px rgba(0,255,255,0.4);
+  margin-bottom: 6px;
+}
+.ov-formula {
+  font-size: 15px; letter-spacing: 3px;
+  color: #335555; margin-bottom: 44px;
+}
+.ov-cta {
+  font-size: 11px; letter-spacing: 4px;
+  color: #00ffff; border: 1px solid rgba(0,255,255,0.5);
+  padding: 10px 30px; border-radius: 3px;
+  margin-bottom: 44px;
+  animation: ctapulse 2.2s ease-in-out infinite;
+}
+@keyframes ctapulse {
+  0%,100% { box-shadow: 0 0 0 0 rgba(0,255,255,0); }
+  50%      { box-shadow: 0 0 18px 4px rgba(0,255,255,0.12); }
+}
+.ov-keys {
+  font-size: 9px; color: #2a2a2a; letter-spacing: 1px;
+  line-height: 2.2; text-align: center;
+}
+.ov-keys b { color: #444; }
+.ov-zones {
+  display: flex; gap: 30px;
+  margin-top: 30px;
+}
+.ov-zone {
+  font-size: 8.5px; text-align: center;
+  line-height: 2; letter-spacing: 1px;
+}
+.ov-zone small { color: #2a2a2a; font-size:7.5px; }
+</style>
+</head>
+<body>
+
+<canvas id="glc"></canvas>
+<canvas id="hud"></canvas>
+
+<div id="overlay">
+  <div class="ov-eyebrow">U-Neuron Framework &nbsp;&middot;&nbsp; Manifold Visualizer</div>
+  <div class="ov-title">U-Space Explorer</div>
+  <div class="ov-formula">z = x + &epsilon;i &nbsp;&nbsp;&nbsp; &epsilon; &ge; 1e&minus;8</div>
+  <div class="ov-cta">&#9654; &nbsp; Click to Enter</div>
+  <div class="ov-keys">
+    <b>WASD</b> &nbsp; move in x&sup1;,x&sup2; &nbsp;&nbsp;&nbsp;
+    <b>Q / E</b> &nbsp; descend / ascend &epsilon; &nbsp;&nbsp;&nbsp;
+    <b>SCROLL</b> &nbsp; fine-tune &epsilon;<br>
+    <b>MOUSE</b> &nbsp; look &nbsp;&nbsp;&nbsp;
+    <b>H</b> &nbsp; HUD &nbsp;&nbsp;&nbsp;
+    <b>R</b> &nbsp; reset &nbsp;&nbsp;&nbsp;
+    <b>ESC</b> &nbsp; release cursor
+  </div>
+  <div class="ov-zones">
+    <div class="ov-zone" style="color:#ffaa33">&#x25B2; HIGH-&epsilon;<br><small>gentle curves<br>&epsilon; &gt; 0.5</small></div>
+    <div class="ov-zone" style="color:#00ccff">&#x25BA; MID-&epsilon;<br><small>intensifying<br>0.08&ndash;0.5</small></div>
+    <div class="ov-zone" style="color:#aabbff">&#x25BC; NEAR-FLOOR<br><small>resolution fog<br>0.018&ndash;0.08</small></div>
+    <div class="ov-zone" style="color:#aa66ff">&#x221E; GHOST LAYER<br><small>ultrametric ideal<br>L&infin; cubes below</small></div>
+  </div>
+</div>
+
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.module.js';
+
+// ── CONSTANTS ────────────────────────────────────────────────────────────────
+const EPS_FLOOR = 0.018;
+const EPS_MAX   = 4.0;
+const EPS_START = 0.35;
+
+// Curvature tracer config
+const TR_POOL  = 40;   // lines in pool
+const TR_PTS   = 32;   // vertices per tracer curve
+const TR_LIFE  = 3.8;  // seconds per tracer lifetime
+const TR_SPAWN = 0.42; // seconds between batch spawns
+
+// Zone thresholds
+const TH_GHOST  = 0.06;
+const TH_NEAR   = 0.10;
+const TH_MID_L  = 0.30;
+const TH_HIGH   = 0.80;
+
+// Zone palette
+const C_HIGH  = new THREE.Color(0xffaa33);
+const C_MID   = new THREE.Color(0x00ccff);
+const C_FLOOR = new THREE.Color(0xaabbff);
+const C_GHOST = new THREE.Color(0xaa66ff);
+
+// ── RENDERER ─────────────────────────────────────────────────────────────────
+const canvas = document.getElementById('glc');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.autoClear = false;
+
+// ── MAIN SCENE ───────────────────────────────────────────────────────────────
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x000000);
+scene.fog = new THREE.FogExp2(0x000000, 0.018);
+
+// ── GHOST SCENE ──────────────────────────────────────────────────────────────
+const ghostScene = new THREE.Scene();
+
+// ── CAMERA ───────────────────────────────────────────────────────────────────
+const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.001, 320);
+camera.position.set(0, EPS_START, 0);
+
+// ── MANUAL POINTER LOCK ──────────────────────────────────────────────────────
+let isLocked = false;
+let yaw = 0, pitch = 0;
+const overlay = document.getElementById('overlay');
+
+overlay.addEventListener('click', () => {
+  canvas.requestPointerLock = canvas.requestPointerLock
+    || canvas.mozRequestPointerLock
+    || canvas.webkitRequestPointerLock;
+  canvas.requestPointerLock();
+});
+
+document.addEventListener('pointerlockchange', () => {
+  isLocked = (document.pointerLockElement === canvas
+    || document.mozPointerLockElement === canvas
+    || document.webkitPointerLockElement === canvas);
+  overlay.classList.toggle('gone', isLocked);
+});
+
+document.addEventListener('mousemove', ev => {
+  if (!isLocked) return;
+  yaw   -= ev.movementX * 0.0022;
+  pitch -= ev.movementY * 0.0022;
+  pitch  = Math.max(-Math.PI * 0.48, Math.min(Math.PI * 0.48, pitch));
+});
+
+// ── INPUT ────────────────────────────────────────────────────────────────────
+const keys = {};
+let showHUD = true;
+
+document.addEventListener('keydown', ev => {
+  const k = ev.key.toLowerCase();
+  keys[k] = true;
+  if (k === 'h') showHUD = !showHUD;
+  if (k === 'r') {
+    camera.position.set(0, EPS_START, 0);
+    yaw = 0; pitch = 0;
+  }
+  if (k === 'escape' && isLocked) document.exitPointerLock();
+});
+document.addEventListener('keyup', ev => { keys[ev.key.toLowerCase()] = false; });
+
+document.addEventListener('wheel', ev => {
+  if (!isLocked) return;
+  const d = ev.deltaY > 0 ? -1 : 1;
+  const eps = camera.position.y;
+  camera.position.y = THREE.MathUtils.clamp(eps + d * eps * 0.07, EPS_FLOOR, EPS_MAX);
+}, { passive: true });
+
+// ── HELPER: ZONE COLOR ───────────────────────────────────────────────────────
+function zoneColor(eps) {
+  if (eps >= TH_HIGH) return C_HIGH.clone();
+  if (eps >= TH_MID_L) {
+    const t = (TH_HIGH - eps) / (TH_HIGH - TH_MID_L);
+    return C_HIGH.clone().lerp(C_MID, t);
+  }
+  if (eps >= TH_NEAR) {
+    const t = (TH_MID_L - eps) / (TH_MID_L - TH_NEAR);
+    return C_MID.clone().lerp(C_FLOOR, t);
+  }
+  const t = Math.min(1, (TH_NEAR - eps) / (TH_NEAR - EPS_FLOOR));
+  return C_FLOOR.clone().lerp(C_GHOST, t);
+}
+
+function zoneName(eps) {
+  if (eps >= TH_HIGH)  return 'HIGH-\u03b5';
+  if (eps >= TH_MID_L) return 'MID-\u03b5';
+  if (eps >= TH_NEAR)  return 'NEAR-FLOOR';
+  return 'RESOLUTION HORIZON';
+}
+
+// ── FOLIATION LEAVES ─────────────────────────────────────────────────────────
+// Horizontal grid planes at fixed ε levels — the leaves of the foliation
+function buildLeafLevels() {
+  const lvl = [];
+  for (let e = EPS_FLOOR; e < 0.08;  e += 0.007)  lvl.push(e); // dense near floor
+  for (let e = 0.08;      e < 0.50;  e += 0.038)  lvl.push(e); // medium mid
+  for (let e = 0.50;      e <= EPS_MAX; e += 0.22) lvl.push(e); // coarse high
+  return lvl;
+}
+
+const LEAF_LEVELS = buildLeafLevels();
+const leafMeshes  = [];
+
+function buildLeaf(epsLevel) {
+  const size = 130, step = 11;
+  const positions = [];
+  for (let v = -size; v <= size; v += step) {
+    positions.push( v, epsLevel, -size,  v, epsLevel,  size); // x-parallel
+    positions.push(-size, epsLevel,  v,  size, epsLevel, v);  // z-parallel
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  const col = zoneColor(epsLevel);
+  const mat = new THREE.LineBasicMaterial({
+    color: col, transparent: true, opacity: 0.06, depthWrite: false
+  });
+  const mesh = new THREE.LineSegments(geo, mat);
+  return mesh;
+}
+
+LEAF_LEVELS.forEach(eps => {
+  const m = buildLeaf(eps);
+  scene.add(m);
+  leafMeshes.push({ mesh: m, eps });
+});
+
+// ── FIBER STALKS ─────────────────────────────────────────────────────────────
+// Vertical lines at (x,z) grid points. Bottom = bright orange at EPS_FLOOR.
+// Top extends beyond EPS_MAX → implied infinite extension upward.
+// At low ε the camera sits near the bright bottom; at high ε the bright base is far below.
+(function buildFibers() {
+  const GRID = 24, SPACING = 8.5;
+  const half = (GRID - 1) * SPACING / 2;
+
+  // 4 height levels per stalk (3 segments)
+  const y0 = EPS_FLOOR;
+  const y1 = 0.30;
+  const y2 = 1.20;
+  const y3 = EPS_MAX * 2.2; // extends past max — shoots past horizon
+
+  const N = GRID * GRID;
+  const verts = N * 3 * 2; // 3 segments × 2 verts
+  const pos = new Float32Array(verts * 3);
+  const col = new Float32Array(verts * 3);
+
+  // Per-level colors: [r, g, b] — orange at floor, fades to invisible
+  const segColors = [
+    [1.00, 0.42, 0.21],  // y0: fiber orange
+    [0.65, 0.18, 0.06],  // y1
+    [0.14, 0.04, 0.01],  // y2
+    [0.00, 0.00, 0.00],  // y3: black / gone
+  ];
+
+  let vi = 0;
+  for (let gx = 0; gx < GRID; gx++) {
+    for (let gz = 0; gz < GRID; gz++) {
+      const sx = -half + gx * SPACING;
+      const sz = -half + gz * SPACING;
+      const ys = [y0, y1, y2, y3];
+
+      for (let s = 0; s < 3; s++) {
+        const ca = segColors[s], cb = segColors[s+1];
+        // bottom
+        pos[vi*3]=sx; pos[vi*3+1]=ys[s];   pos[vi*3+2]=sz;
+        col[vi*3]=ca[0]; col[vi*3+1]=ca[1]; col[vi*3+2]=ca[2];
+        vi++;
+        // top
+        pos[vi*3]=sx; pos[vi*3+1]=ys[s+1]; pos[vi*3+2]=sz;
+        col[vi*3]=cb[0]; col[vi*3+1]=cb[1]; col[vi*3+2]=cb[2];
+        vi++;
+      }
+    }
+  }
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute('color',    new THREE.BufferAttribute(col, 3));
+  const mat = new THREE.LineBasicMaterial({
+    vertexColors: true, transparent: true, opacity: 0.9, depthWrite: false
+  });
+  scene.add(new THREE.LineSegments(geo, mat));
+})();
+
+// ── AMBIENT PARTICLES ────────────────────────────────────────────────────────
+const PARTICLE_N = 2800;
+const pOrigPos = new Float32Array(PARTICLE_N * 3);
+
+const particleGeo = new THREE.BufferGeometry();
+(function buildParticles() {
+  const pos = new Float32Array(PARTICLE_N * 3);
+  const col = new Float32Array(PARTICLE_N * 3);
+
+  for (let i = 0; i < PARTICLE_N; i++) {
+    const x = (Math.random() - 0.5) * 220;
+    const y = EPS_FLOOR + Math.random() * (EPS_MAX - EPS_FLOOR);
+    const z = (Math.random() - 0.5) * 220;
+    pos[i*3]=x; pos[i*3+1]=y; pos[i*3+2]=z;
+    pOrigPos[i*3]=x; pOrigPos[i*3+1]=y; pOrigPos[i*3+2]=z;
+    const c = zoneColor(y);
+    col[i*3]=c.r*0.55; col[i*3+1]=c.g*0.55; col[i*3+2]=c.b*0.55;
+  }
+
+  particleGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  particleGeo.setAttribute('color',    new THREE.BufferAttribute(col, 3));
+  const mat = new THREE.PointsMaterial({
+    size: 0.10, vertexColors: true,
+    transparent: true, opacity: 0.55,
+    depthWrite: false, sizeAttenuation: true
+  });
+  scene.add(new THREE.Points(particleGeo, mat));
+})();
+
+// ── GHOST ULTRAMETRIC LAYER ──────────────────────────────────────────────────
+// Nested axis-aligned cubes = L∞ (Chebyshev) balls.
+// In ultrametric space, Chebyshev balls are cubes and they ONLY nest or are disjoint — never partial overlap.
+// Positioned below EPS_FLOOR, glimpsed when near the resolution horizon.
+(function buildGhost() {
+  const ghostColor = new THREE.Color(0xaa66ff);
+  const ghostMat   = () => new THREE.LineBasicMaterial({
+    color: ghostColor, transparent: true, opacity: 0.0, depthWrite: false
+  });
+
+  function addBox(size, px, py, pz) {
+    const edges = new THREE.EdgesGeometry(new THREE.BoxGeometry(size, size, size));
+    const mesh  = new THREE.LineSegments(edges, ghostMat());
+    mesh.position.set(px, py, pz);
+    ghostScene.add(mesh);
+  }
+
+  // Level 0: one large bounding cube
+  addBox(9, 0, -0.5, 0);
+
+  // Level 1: 8 nested cubes at corners
+  const o1 = 2.8;
+  for (const dx of [-1,1]) for (const dy of [-1,1]) for (const dz of [-1,1]) {
+    addBox(3.2, dx*o1, -0.5 + dy*o1, dz*o1);
+  }
+
+  // Level 2: 4 smaller corner cubes for one branch
+  const o2 = 3.8;
+  for (const dx of [-1,1]) for (const dz of [-1,1]) {
+    addBox(1.3, dx*o2, -0.5, dz*o2);
+  }
+
+  // Tree branches descending from EPS_FLOOR toward the singularity
+  const branchMat = new THREE.LineBasicMaterial({
+    color: new THREE.Color(0x661188), transparent: true, opacity: 0.0, depthWrite: false
+  });
+  const bPos = [];
+  for (const dx of [-3, 0, 3]) for (const dz of [-3, 0, 3]) {
+    bPos.push(dx, -5, dz,  dx, -0.02, dz);   // vertical branch
+    // sub-branches
+    bPos.push(dx, -2, dz,  dx+1, -5, dz);
+    bPos.push(dx, -2, dz,  dx-1, -5, dz);
+  }
+  const bGeo = new THREE.BufferGeometry();
+  bGeo.setAttribute('position', new THREE.Float32BufferAttribute(bPos, 3));
+  ghostScene.add(new THREE.LineSegments(bGeo, branchMat));
+})();
+
+// ── CURVATURE TRACERS ────────────────────────────────────────────────────────
+// "All the curves" passing through the current point.
+// Each tracer follows a direction bent by κ = 1/ε acting on a spatial flow field.
+// Low ε → tight spirals shooting past horizon. High ε → gentle open arcs.
+const tracerPool = [];
+let lastSpawnT = 0;
+
+(function buildTracerPool() {
+  for (let i = 0; i < TR_POOL; i++) {
+    const positions = new Float32Array(TR_PTS * 3);
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geo.setDrawRange(0, TR_PTS);
+    const mat = new THREE.LineBasicMaterial({
+      color: 0x00ffff, transparent: true, opacity: 0, depthWrite: false
+    });
+    const line = new THREE.Line(geo, mat);
+    scene.add(line);
+    tracerPool.push({ geo, mat, age: 0, maxAge: TR_LIFE, alive: false });
+  }
+})();
+
+// Walk a curved geodesic from (ox,oy,oz) heading angle θ.
+// The heading drifts by κ·field at each step — curvature bends the trajectory.
+function computeTracerPath(ox, oy, oz, theta, eps) {
+  const pts = new Float32Array(TR_PTS * 3);
+  let x = ox, y = oy, z = oz, θ = theta;
+  // Step length: shorter at low ε (tighter resolution near the floor)
+  const ds = 0.55 + eps * 0.45;
+
+  for (let i = 0; i < TR_PTS; i++) {
+    pts[i*3] = x;  pts[i*3+1] = y;  pts[i*3+2] = z;
+
+    const localEps = Math.max(EPS_FLOOR, y);
+    const kappa = Math.min(1 / localEps, 55);
+
+    // Two-component spatial flow field — smooth, non-repeating, position + time
+    const flow = Math.sin(x * 0.093 + z * 0.079 + time * 0.32 + theta * 1.8) * 0.019
+               + Math.cos(x * 0.048 - z * 0.063 + time * 0.21            ) * 0.011;
+    θ += kappa * flow * ds;
+
+    x += Math.sin(θ) * ds;
+    z -= Math.cos(θ) * ds;
+    // Slight ε drift: the tracer wanders across foliation leaves
+    y += Math.sin(θ * 0.55 + i * 0.24 + time * 0.17) * 0.0013;
+    y  = THREE.MathUtils.clamp(y, EPS_FLOOR, EPS_MAX * 0.96);
+  }
+  return pts;
+}
+
+function spawnTracers(eps) {
+  const batchSize = 20; // fan of 20 directions per spawn
+  const angleStep = (Math.PI * 2) / batchSize;
+  let spawned = 0;
+
+  for (const t of tracerPool) {
+    if (t.alive || spawned >= batchSize) continue;
+
+    // Fan around the camera's current heading; slight jitter per tracer
+    const angle = yaw + spawned * angleStep + (Math.random() - 0.5) * angleStep * 0.6;
+    const pts = computeTracerPath(
+      camera.position.x, camera.position.y, camera.position.z, angle, eps
+    );
+
+    const posAttr = t.geo.attributes.position;
+    for (let j = 0; j < TR_PTS * 3; j++) posAttr.array[j] = pts[j];
+    posAttr.needsUpdate = true;
+
+    t.mat.color.copy(zoneColor(eps));
+    t.age    = 0;
+    t.maxAge = TR_LIFE * (0.65 + Math.random() * 0.7);
+    t.alive  = true;
+    spawned++;
+  }
+}
+
+function updateTracers(dt, eps) {
+  // Opacity ceiling rises with curvature — tracers bloom more vividly near the floor
+  const ceiling = Math.min(0.32, 0.04 + (1 / eps) * 0.006);
+
+  for (const t of tracerPool) {
+    if (!t.alive) { t.mat.opacity = 0; continue; }
+    t.age += dt;
+    if (t.age >= t.maxAge) { t.alive = false; t.mat.opacity = 0; continue; }
+
+    // Envelope: fast fade-in (15%), plateau, gentle fade-out (30%)
+    const p   = t.age / t.maxAge;
+    const env = p < 0.15 ? p / 0.15 : p > 0.70 ? (1 - p) / 0.30 : 1.0;
+    t.mat.opacity = env * ceiling;
+  }
+}
+
+// ── EMISSION ISOSURFACE SPHERES ─────────────────────────────────────────────
+// Each sphere = a level set of |z| = √(x²+ε²).
+// Every U-number on the sphere surface has the same emission value — the sphere
+// is the full orbit of the discarded phase angle, made visible from every direction.
+// Radius grows with ε: spacious high up, compact near the floor.
+const N_EMIT   = 120;
+const emitData = [];       // { x, y, z, baseR, phase }
+const emitDummy = new THREE.Object3D();
+let emitMesh;
+
+(function buildEmissionSpheres() {
+  for (let i = 0; i < N_EMIT; i++) {
+    // Log-biased Y: proportionally more spheres near the floor
+    const t  = Math.pow(Math.random(), 1.7);
+    const sy = EPS_FLOOR + t * (EPS_MAX * 0.85 - EPS_FLOOR);
+    const sx = (Math.random() - 0.5) * 150;
+    const sz = (Math.random() - 0.5) * 150;
+    // Radius ∝ ε: larger/more open at high ε, smaller/tighter near floor
+    const baseR = 0.055 + sy * 0.13;
+    emitData.push({ x: sx, y: sy, z: sz, baseR, phase: Math.random() * Math.PI * 2 });
+  }
+
+  const geo = new THREE.SphereGeometry(1, 10, 8);
+  const mat = new THREE.MeshBasicMaterial({
+    transparent: true, opacity: 0.07, depthWrite: false
+  });
+
+  emitMesh = new THREE.InstancedMesh(geo, mat, N_EMIT);
+  // Per-instance colour (Three.js r132+)
+  emitMesh.instanceColor = new THREE.InstancedBufferAttribute(
+    new Float32Array(N_EMIT * 3), 3
+  );
+
+  emitData.forEach((d, i) => {
+    emitDummy.position.set(d.x, d.y, d.z);
+    emitDummy.scale.setScalar(d.baseR);
+    emitDummy.updateMatrix();
+    emitMesh.setMatrixAt(i, emitDummy.matrix);
+    emitMesh.setColorAt(i, zoneColor(d.y));
+  });
+  emitMesh.instanceMatrix.needsUpdate = true;
+  emitMesh.instanceColor.needsUpdate  = true;
+  scene.add(emitMesh);
+})();
+
+function updateEmissionSpheres(t, camEps) {
+  emitData.forEach((d, i) => {
+    // Gentle breathing: ±9% scale, each sphere on its own phase
+    const breathe = 1.0 + Math.sin(t * 0.44 + d.phase) * 0.09;
+    emitDummy.position.set(d.x, d.y, d.z);
+    emitDummy.scale.setScalar(d.baseR * breathe);
+    emitDummy.updateMatrix();
+    emitMesh.setMatrixAt(i, emitDummy.matrix);
+
+    // Spheres within ±0.22 ε of the camera glow more vividly —
+    // highlighting the current emission isosurface neighbourhood
+    const proximity = Math.max(0, 1 - Math.abs(d.y - camEps) / 0.22);
+    const c = zoneColor(d.y);
+    if (proximity > 0) c.multiplyScalar(1 + proximity * 1.5);
+    emitMesh.setColorAt(i, c);
+  });
+  emitMesh.instanceMatrix.needsUpdate = true;
+  emitMesh.instanceColor.needsUpdate  = true;
+}
+
+// ── HUD CANVAS ───────────────────────────────────────────────────────────────
+const hudCvs = document.getElementById('hud');
+const hCtx   = hudCvs.getContext('2d');
+hudCvs.width  = window.innerWidth;
+hudCvs.height = window.innerHeight;
+
+function drawHUD(eps) {
+  const W = hudCvs.width, H = hudCvs.height;
+  hCtx.clearRect(0, 0, W, H);
+  if (!showHUD) return;
+
+  const zc   = zoneColor(eps);
+  const zn   = zoneName(eps);
+  const acc  = `rgb(${~~(zc.r*255)},${~~(zc.g*255)},${~~(zc.b*255)})`;
+  const curvNorm = Math.min(1, (1/eps) / 56);  // 1/eps_floor ≈ 56
+
+  const px = 22, lh = 19;
+
+  // ── Near-floor vignette ──
+  if (eps < TH_NEAR) {
+    const str = Math.pow((TH_NEAR - eps) / TH_NEAR, 1.4);
+    const vg = hCtx.createRadialGradient(W/2, H/2, H*0.28, W/2, H/2, H*0.82);
+    vg.addColorStop(0, 'rgba(0,0,0,0)');
+    vg.addColorStop(1, `rgba(0,5,30,${str * 0.55})`);
+    hCtx.fillStyle = vg;
+    hCtx.fillRect(0, 0, W, H);
+
+    // Chromatic fringe at extreme low-ε
+    if (eps < TH_GHOST) {
+      const fStr = (TH_GHOST - eps) / TH_GHOST * 0.12;
+      hCtx.globalAlpha = fStr;
+      const rg = hCtx.createRadialGradient(W/2, H/2, H*0.25, W/2, H/2, H*0.75);
+      rg.addColorStop(0, 'rgba(0,0,0,0)');
+      rg.addColorStop(1, 'rgba(80,0,180,0.6)');
+      hCtx.fillStyle = rg;
+      hCtx.fillRect(0, 0, W, H);
+      hCtx.globalAlpha = 1;
+    }
+  }
+
+  // ── Info panel ──
+  hCtx.globalAlpha = 0.9;
+
+  // ε and 1/ε
+  hCtx.font = '11px Courier New';
+  hCtx.fillStyle = acc;
+  hCtx.fillText(`\u03b5 = ${eps.toFixed(5)}`, px, px + lh);
+  hCtx.fillStyle = '#888';
+  hCtx.fillText(`1/\u03b5 = ${(1/eps).toFixed(2)}`, px + 130, px + lh);
+
+  // Position
+  hCtx.fillStyle = '#3a3a3a';
+  hCtx.fillText(`x = (${camera.position.x.toFixed(2)},\u2009${camera.position.z.toFixed(2)})`, px, px + lh*2);
+
+  // Zone label
+  hCtx.font = 'bold 9px Courier New';
+  hCtx.fillStyle = acc;
+  hCtx.fillText(`REGIME: ${zn}`, px, px + lh*3 + 2);
+
+  // Curvature bar
+  const bY = px + lh*4 + 6, bW = 160, bH = 3;
+  hCtx.fillStyle = '#111';
+  hCtx.fillRect(px, bY, bW, bH);
+  hCtx.fillStyle = acc;
+  hCtx.fillRect(px, bY, bW * curvNorm, bH);
+  hCtx.font = '7.5px Courier New';
+  hCtx.fillStyle = '#333';
+  hCtx.fillText('CURVATURE  \u03ba = 1/\u03b5', px, bY - 4);
+
+  // Near-floor warning
+  if (eps < TH_NEAR) {
+    const flash = 0.55 + Math.sin(Date.now() * 0.0028) * 0.35;
+    hCtx.globalAlpha = flash * 0.85;
+    hCtx.fillStyle = '#aabbff';
+    hCtx.font = '9px Courier New';
+    hCtx.fillText('\u25BC  RESOLUTION HORIZON APPROACHING', px, H - 46);
+    hCtx.fillStyle = '#334';
+    hCtx.font = '7.5px Courier New';
+    hCtx.fillText('Floats: \u03b5 floor \u2248 1e\u22128  \u2014  ultrametric ideal continues below', px, H - 30);
+  }
+
+  if (eps < TH_GHOST * 1.8) {
+    const gFlash = 0.5 + Math.sin(Date.now() * 0.0018 + 1) * 0.3;
+    hCtx.globalAlpha = gFlash * 0.7;
+    hCtx.fillStyle = '#aa66ff';
+    hCtx.font = '8px Courier New';
+    hCtx.fillText('\u221E  L\u221E ghost layer: Chebyshev balls = cubes, strict nesting only', px, H - 14);
+  }
+
+  hCtx.globalAlpha = 1;
+
+  // ── Altimeter (right edge) ──
+  const aX = W - 18, aY = H * 0.08, aH = H * 0.84, aW = 5;
+  hCtx.fillStyle = '#080808';
+  hCtx.fillRect(aX - aW/2, aY, aW, aH);
+
+  // Zone gradient fill
+  const ag = hCtx.createLinearGradient(0, aY, 0, aY + aH);
+  ag.addColorStop(0.00, 'rgba(255,170,51,0.5)');
+  ag.addColorStop(0.35, 'rgba(0,204,255,0.5)');
+  ag.addColorStop(0.70, 'rgba(170,187,255,0.5)');
+  ag.addColorStop(1.00, 'rgba(170,102,255,0.5)');
+  hCtx.fillStyle = ag;
+  hCtx.fillRect(aX - aW/2 + 1, aY, aW - 2, aH);
+
+  // Camera marker (log scale)
+  const logF = Math.log(EPS_FLOOR), logM = Math.log(EPS_MAX);
+  const logE = Math.log(Math.max(EPS_FLOOR, eps));
+  const tNorm = 1 - (logE - logF) / (logM - logF);
+  const mY = aY + aH * tNorm;
+  hCtx.fillStyle = '#fff';
+  hCtx.fillRect(aX - aW - 2, mY - 2, aW * 2 + 4, 4);
+
+  // Labels
+  hCtx.font = '7px Courier New';
+  hCtx.fillStyle = '#2a2a2a';
+  hCtx.textAlign = 'right';
+  hCtx.fillText('\u03b5\u2081\u208c\u2099\u2097', aX - aW - 3, aY + aH + 12);
+  hCtx.fillText('\u03b5\u2098\u2090\u2093', aX - aW - 3, aY - 3);
+  hCtx.textAlign = 'left';
+
+  // ── Crosshair ──
+  hCtx.globalAlpha = 0.22;
+  hCtx.strokeStyle = acc;
+  hCtx.lineWidth = 1;
+  hCtx.beginPath();
+  hCtx.moveTo(W/2 - 9, H/2); hCtx.lineTo(W/2 + 9, H/2);
+  hCtx.moveTo(W/2, H/2 - 9); hCtx.lineTo(W/2, H/2 + 9);
+  hCtx.stroke();
+  hCtx.globalAlpha = 1;
+}
+
+// ── MAIN LOOP ────────────────────────────────────────────────────────────────
+const clock = new THREE.Clock();
+let time = 0;
+
+// Pre-compute forward/right vectors
+const fwdVec   = new THREE.Vector3();
+const rightVec = new THREE.Vector3();
+
+function animate() {
+  requestAnimationFrame(animate);
+  const dt  = Math.min(clock.getDelta(), 0.05);
+  time += dt;
+
+  const eps = camera.position.y;
+
+  // ── Camera rotation ──
+  camera.rotation.order = 'YXZ';
+  camera.rotation.y = yaw;
+  camera.rotation.x = pitch;
+
+  // ── Movement (XZ only; Y via Q/E) ──
+  if (isLocked) {
+    const xzSpd = 1.4 + eps * 3.8;
+    const ySpd  = eps * 0.55;
+
+    fwdVec.set(-Math.sin(yaw), 0, -Math.cos(yaw));
+    rightVec.set(Math.cos(yaw), 0, -Math.sin(yaw));
+
+    if (keys['w']) camera.position.addScaledVector(fwdVec,   xzSpd * dt);
+    if (keys['s']) camera.position.addScaledVector(fwdVec,  -xzSpd * dt);
+    if (keys['d']) camera.position.addScaledVector(rightVec, xzSpd * dt);
+    if (keys['a']) camera.position.addScaledVector(rightVec,-xzSpd * dt);
+    if (keys['q']) camera.position.y -= ySpd * dt;
+    if (keys['e']) camera.position.y += ySpd * dt;
+    camera.position.y = THREE.MathUtils.clamp(camera.position.y, EPS_FLOOR, EPS_MAX);
+
+    // ── Geodesic drift: the space curves your heading ──────────────────────
+    // κ = 1/ε bends the trajectory as you translate — strongest near the floor.
+    // The flow field varies spatially so different regions curve differently.
+    if (keys['w'] || keys['s'] || keys['a'] || keys['d']) {
+      const kappa = Math.min(1 / camera.position.y, 48);
+      const field = Math.sin(camera.position.x * 0.087 + camera.position.z * 0.071 + time * 0.35);
+      yaw += kappa * field * 0.0018 * dt;
+    }
+  }
+
+  // ── Tracer spawn and update ───────────────────────────────────────────────
+  if (time - lastSpawnT > TR_SPAWN) {
+    spawnTracers(camera.position.y);
+    lastSpawnT = time;
+  }
+  updateTracers(dt, camera.position.y);
+  updateEmissionSpheres(time, camera.position.y);
+
+  // ── FOV widens at low ε: fisheye / near-singularity distortion ──
+  const targetFOV = THREE.MathUtils.clamp(64 + (1 / camera.position.y) * 9.5, 64, 115);
+  camera.fov = THREE.MathUtils.lerp(camera.fov, targetFOV, 0.045);
+  camera.updateProjectionMatrix();
+
+  // ── Fog density ∝ 1/ε ──
+  const targetDensity = THREE.MathUtils.clamp(0.005 / camera.position.y, 0.003, 0.55);
+  scene.fog.density = THREE.MathUtils.lerp(scene.fog.density, targetDensity, 0.04);
+
+  // ── Background color ──
+  const bgCol = zoneColor(camera.position.y);
+  scene.background.setRGB(bgCol.r * 0.045, bgCol.g * 0.045, bgCol.b * 0.06);
+  scene.fog.color.copy(scene.background);
+
+  // ── Highlight foliation leaves (bloom wider when translating) ────────────
+  // Moving in XZ crosses adjacent leaves; bloom the neighbourhood so the
+  // local foliation structure lights up around the traveller.
+  const translating = isLocked && (keys['w'] || keys['s'] || keys['a'] || keys['d']);
+  const bloomRadius = translating ? 0.22 : 0.10;
+  leafMeshes.forEach(({ mesh, eps: le }) => {
+    const dist = Math.abs(le - camera.position.y);
+    const target = dist < 0.03 ? 0.42
+                 : dist < bloomRadius ? 0.16 + (1 - dist / bloomRadius) * 0.12
+                 : 0.052;
+    mesh.material.opacity = THREE.MathUtils.lerp(mesh.material.opacity, target, 0.07);
+  });
+
+  // ── Particle drift (manifold "breathing") ──
+  const pa = particleGeo.attributes.position;
+  for (let i = 0; i < PARTICLE_N; i++) {
+    pa.setX(i, pOrigPos[i*3]   + Math.sin(time * 0.28 + i * 0.71) * 0.14);
+    pa.setZ(i, pOrigPos[i*3+2] + Math.cos(time * 0.22 + i * 0.53) * 0.14);
+  }
+  pa.needsUpdate = true;
+
+  // ── Ghost layer opacity (near EPS_FLOOR only) ──
+  const ghostStr = Math.max(0, 1 - camera.position.y / (TH_GHOST * 2.2));
+  ghostScene.children.forEach(child => {
+    if (child.material) {
+      child.material.opacity = (child.geometry.type === 'BufferGeometry' ? 0.13 : 0.20) * ghostStr;
+    }
+  });
+
+  // ── Render ──
+  renderer.clear();
+  renderer.render(scene, camera);
+
+  if (ghostStr > 0.01) {
+    renderer.clearDepth();
+    renderer.render(ghostScene, camera);
+  }
+
+  drawHUD(camera.position.y);
+}
+
+// ── RESIZE ───────────────────────────────────────────────────────────────────
+window.addEventListener('resize', () => {
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  hudCvs.width  = window.innerWidth;
+  hudCvs.height = window.innerHeight;
+});
+
+animate();
+</script>
+</body>
+</html>

@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>U-Neuron Manifold Simulator</title>
+<style>
+:root {
+  --bg: #000000;
+  --surface: rgba(255,255,255,0.04);
+  --border: rgba(255,255,255,0.08);
+  --text: #e0e0e0;
+  --dim: #555;
+  --accent: #00ffff;
+  --accent-rgb: 0,255,255;
+  --fiber: #ff6b35;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; background: #000; }
+body {
+  font-family: 'Courier New', monospace;
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+/* HEADER */
+header {
+  height: 46px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(0,0,0,0.95);
+  z-index: 10;
+}
+.h-title {
+  font-size: 12px;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  color: var(--accent);
+  text-shadow: 0 0 12px rgba(var(--accent-rgb),0.5);
+}
+.h-status {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: var(--dim);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 3px 12px;
+}
+.h-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent);
+  animation: blink 2.5s ease-in-out infinite;
+}
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+/* LAYOUT */
+.layout {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+/* SIDEBAR */
+.sidebar {
+  width: 272px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  scrollbar-width: thin;
+  scrollbar-color: #222 transparent;
+}
+.sidebar::-webkit-scrollbar { width: 3px; }
+.sidebar::-webkit-scrollbar-thumb { background: #222; }
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 13px;
+}
+.card-lbl {
+  font-size: 8px;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: var(--accent);
+  opacity: 0.75;
+  margin-bottom: 11px;
+}
+
+/* SLIDERS */
+.srow { margin-bottom: 10px; }
+.srow:last-of-type { margin-bottom: 0; }
+.shdr {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  margin-bottom: 5px;
+}
+.sname { color: var(--dim); }
+.sval  { color: var(--accent); font-weight: bold; min-width: 36px; text-align: right; }
+input[type=range] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%; height: 2px;
+  background: rgba(var(--accent-rgb),0.15);
+  border-radius: 1px;
+  outline: none;
+  cursor: pointer;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 8px rgba(var(--accent-rgb),0.6);
+  cursor: pointer;
+  transition: box-shadow 0.15s;
+}
+input[type=range]:hover::-webkit-slider-thumb {
+  box-shadow: 0 0 16px var(--accent);
+}
+
+/* SEND BUTTON */
+.send-btn {
+  width: 100%;
+  padding: 9px;
+  background: transparent;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  font-family: 'Courier New', monospace;
+  font-size: 10px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.2s, box-shadow 0.2s;
+  margin-top: 12px;
+}
+.send-btn:hover {
+  background: rgba(var(--accent-rgb),0.08);
+  box-shadow: 0 0 20px rgba(var(--accent-rgb),0.3);
+}
+.send-btn.fire {
+  animation: btnfire 0.5s ease-out;
+}
+@keyframes btnfire {
+  0%   { box-shadow: 0 0 0 0 rgba(var(--accent-rgb),0.8); }
+  40%  { box-shadow: 0 0 24px 8px rgba(var(--accent-rgb),0.4); }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+
+/* CONSTRAINT BUTTONS */
+.cbtnrow { display: flex; gap: 4px; }
+.cbtn {
+  flex: 1;
+  padding: 6px 3px;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--dim);
+  font-family: 'Courier New', monospace;
+  font-size: 8px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.25s;
+}
+.cbtn.on {
+  background: rgba(var(--accent-rgb),0.1);
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow: 0 0 10px rgba(var(--accent-rgb),0.2);
+}
+.mode-desc {
+  margin-top: 9px;
+  font-size: 8.5px;
+  line-height: 1.7;
+  color: #444;
+}
+
+/* READOUT */
+.readout { font-size: 9.5px; line-height: 2; }
+.readout .k { color: var(--accent); opacity: 0.65; }
+.readout .v { color: var(--text); }
+.readout .f { color: var(--fiber); }
+
+/* STAGE */
+.stage { flex: 1; position: relative; min-width: 0; }
+#svg { width: 100%; height: 100%; display: block; }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="h-title">U-Neuron Manifold Simulator</span>
+  <div class="h-status"><span class="h-dot"></span>SIMULATION</div>
+</header>
+
+<div class="layout">
+<aside class="sidebar">
+
+  <!-- INPUT CONTROLS -->
+  <div class="card">
+    <div class="card-lbl">Input U-Number  z&#x2080; = x + &#949;i</div>
+    <div class="srow">
+      <div class="shdr">
+        <span class="sname">x  (standard part)</span>
+        <span class="sval" id="xVal">0.60</span>
+      </div>
+      <input type="range" id="xSlider" min="-1" max="1" step="0.01" value="0.6">
+    </div>
+    <div class="srow">
+      <div class="shdr">
+        <span class="sname">&#949;  (infinitesimal fiber)</span>
+        <span class="sval" id="eVal">0.15</span>
+      </div>
+      <input type="range" id="eSlider" min="0.01" max="1.0" step="0.01" value="0.15">
+    </div>
+    <button class="send-btn" id="sendBtn">&#9654; Send Input</button>
+  </div>
+
+  <!-- CONSTRAINT MODE -->
+  <div class="card">
+    <div class="card-lbl">Constraint Manifold</div>
+    <div class="cbtnrow">
+      <button class="cbtn on" data-m="general">General</button>
+      <button class="cbtn"    data-m="ds">D-Stoch</button>
+      <button class="cbtn"    data-m="unitary">Unitary</button>
+    </div>
+    <div class="mode-desc" id="modeDesc">
+      Unconstrained W&#x2090;, W&#x2087;. Maximum expressivity. Standard gradient descent.
+    </div>
+  </div>
+
+  <!-- FORWARD PASS READOUT -->
+  <div class="card">
+    <div class="card-lbl">Forward Pass State</div>
+    <div class="readout">
+      <div><span class="k">INPUT&nbsp; </span><span class="v" id="r0">&#8212;</span></div>
+      <div><span class="k">LAYER1 </span><span class="v" id="r1">&#8212;</span></div>
+      <div><span class="k">LAYER2 </span><span class="v" id="r2">&#8212;</span></div>
+      <div><span class="k">EMIT&nbsp;&nbsp; </span><span class="f" id="rE">&#8212;</span></div>
+      <div><span class="k">&#916;S&nbsp;&nbsp;&nbsp;&nbsp; </span><span class="v" id="rL">&#8212;</span></div>
+    </div>
+  </div>
+
+  <!-- U-SPACE GEOMETRY -->
+  <div class="card">
+    <div class="card-lbl">U-Space Geometry</div>
+    <div class="readout">
+      <div><span class="k">z&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span><span class="v" id="gz">&#8212;</span></div>
+      <div><span class="k">|z|&nbsp;&nbsp;&nbsp; </span><span class="v" id="gn">&#8212;</span></div>
+      <div><span class="k">fiber&nbsp; </span><span class="f" id="gf">&#8212;</span></div>
+      <div><span class="k">mode&nbsp;&nbsp; </span><span class="v" id="gm">GENERAL</span></div>
+    </div>
+  </div>
+
+  <!-- FORMULA REFERENCE -->
+  <div class="card">
+    <div class="card-lbl">ULinear Formula</div>
+    <div class="readout" style="font-size:8px;line-height:1.9;color:#3a3a3a">
+      <div style="color:#444">Re(z') = W&#x2090;x &#8722; W&#x2087;&#949; + b&#x2093;</div>
+      <div style="color:#444">Im(z') = W&#x2090;&#949; + W&#x2087;x + b&#x2091;</div>
+      <div style="color:#333;margin-top:4px">emit = &#8730;(x&#178; + &#949;&#178;)</div>
+      <div style="color:#333">&#916;S = &#955;&#946; &#931;|&#916;z|</div>
+    </div>
+  </div>
+
+</aside>
+
+<main class="stage">
+<svg id="svg" viewBox="0 0 900 600" preserveAspectRatio="xMidYMid meet">
+<defs>
+  <filter id="fGlow" x="-60%" y="-60%" width="220%" height="220%">
+    <feGaussianBlur stdDeviation="4" result="b"/>
+    <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+  </filter>
+  <filter id="fPkt" x="-120%" y="-120%" width="340%" height="340%">
+    <feGaussianBlur stdDeviation="6" result="b"/>
+    <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+  </filter>
+  <filter id="fFiber" x="-100%" y="-100%" width="300%" height="300%">
+    <feGaussianBlur stdDeviation="3" result="b"/>
+    <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+  </filter>
+  <filter id="fEmit" x="-300%" y="-300%" width="700%" height="700%">
+    <feGaussianBlur stdDeviation="16" result="b"/>
+    <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+  </filter>
+  <radialGradient id="nodeGrad" cx="50%" cy="35%" r="65%">
+    <stop offset="0%" stop-color="rgba(255,255,255,0.07)"/>
+    <stop offset="100%" stop-color="rgba(0,0,0,0.95)"/>
+  </radialGradient>
+</defs>
+
+<!-- WARP FIELD -->
+<g id="warpField" opacity="0.28"></g>
+
+<!-- LAYER LABELS -->
+<text x="130" y="40" text-anchor="middle" font-family="Courier New" font-size="9" letter-spacing="2" fill="#2a2a2a">INPUT</text>
+<text x="450" y="40" text-anchor="middle" font-family="Courier New" font-size="9" letter-spacing="2" fill="#2a2a2a">ULINEAR</text>
+<text x="770" y="40" text-anchor="middle" font-family="Courier New" font-size="9" letter-spacing="2" fill="#2a2a2a">EMISSION</text>
+
+<!-- DIVIDERS -->
+<line x1="290" y1="52" x2="290" y2="558" stroke="#111" stroke-width="1" stroke-dasharray="3,9"/>
+<line x1="610" y1="52" x2="610" y2="558" stroke="#111" stroke-width="1" stroke-dasharray="3,9"/>
+
+<!-- EDGES -->
+<g id="edgeGroup"></g>
+<!-- PACKETS -->
+<g id="packetGroup"></g>
+<!-- NODES -->
+<g id="nodeGroup"></g>
+<!-- EMIT FX -->
+<g id="emitFx"></g>
+
+<!-- LEGEND -->
+<g transform="translate(834,530)">
+  <circle cx="0" cy="0" r="4" fill="#ff6b35" opacity="0.7"/>
+  <text x="8" y="4" font-family="Courier New" font-size="8" fill="#333">&#949; fiber</text>
+  <circle cx="0" cy="14" r="5" fill="none" stroke="#00ffff" stroke-width="1.5" opacity="0.5"/>
+  <text x="8" y="18" font-family="Courier New" font-size="8" fill="#333">|z| packet</text>
+</g>
+</svg>
+</main>
+</div>
+
+<script>
+// ── CONSTANTS ────────────────────────────────────────────────
+const W = 900, H = 600;
+
+const NP = {
+  inp: [[130,200],[130,400]],
+  hid: [[450,150],[450,300],[450,450]],
+  out: [[770,300]]
+};
+
+// edges: {f,t,c1,c2,layer,fi,hi,oi}
+const EDGES = [];
+NP.inp.forEach((f,fi)=>{
+  NP.hid.forEach((t,hi)=>{
+    EDGES.push({f,t,c1:[f[0]+130,f[1]],c2:[t[0]-130,t[1]],layer:0,fi,hi});
+  });
+});
+NP.hid.forEach((f,hi)=>{
+  NP.out.forEach((t,oi)=>{
+    EDGES.push({f,t,c1:[f[0]+130,f[1]],c2:[t[0]-130,t[1]],layer:1,hi,oi});
+  });
+});
+
+const MODES = {
+  general:{
+    accent:'#00ffff', rgb:'0,255,255',
+    fFreq:0.025, fAmp:36, fSpd:0.55,
+    desc:'Unconstrained W\u2090, W\u2087. Maximum expressivity. Standard gradient descent on free parameters.'
+  },
+  ds:{
+    accent:'#bf00ff', rgb:'191,0,255',
+    fFreq:0.016, fAmp:22, fSpd:0.38,
+    desc:'Doubly-stochastic projection (Sinkhorn-Knopp 20 iters). Row \u2215 col sums \u2248 1. Spectral norm \u2264 1.'
+  },
+  unitary:{
+    accent:'#39ff14', rgb:'57,255,20',
+    fFreq:0.008, fAmp:12, fSpd:0.22,
+    desc:'Semi-unitary (Gram-Schmidt orthonormal columns). \u2016z\u2032\u2016 \u2248 \u2016z\u2016. No vanishing \u2215 exploding gradients.'
+  }
+};
+
+// ── RAW DEMO WEIGHTS ─────────────────────────────────────────
+const RWa1 = [[ 0.80,-0.30],[ 0.40, 0.70],[-0.20, 0.90]];
+const RWb1 = [[ 0.10,-0.05],[ 0.08, 0.12],[-0.07, 0.04]];
+const Rbx1 = [ 0.10,-0.05, 0.08];
+const Rbe1 = [ 0.01, 0.02, 0.015];
+const RWa2 = [[ 0.60, 0.45,-0.35]];
+const RWb2 = [[ 0.06, 0.04,-0.03]];
+const Rbx2 = [ 0.05];
+const Rbe2 = [ 0.01];
+
+// ── MATRIX MATH ──────────────────────────────────────────────
+const mv = (M,v) => M.map(r=>r.reduce((s,w,j)=>s+w*v[j],0));
+const tr = M => M[0].map((_,j)=>M.map(r=>r[j]));
+
+function sinkhornRect(M, it=20){
+  let A = M.map(r=>r.map(v=>Math.abs(v)+1e-9));
+  for(let k=0;k<it;k++){
+    A = A.map(r=>{const s=r.reduce((a,b)=>a+b,0);return r.map(v=>v/s);});
+    const cs = A[0].map((_,j)=>A.reduce((s,r)=>s+r[j],0));
+    A = A.map(r=>r.map((v,j)=>v/cs[j]));
+  }
+  return A;
+}
+
+function gramSchmidt(M){
+  const cols = tr(M);
+  const orth = [];
+  for(let j=0;j<cols.length;j++){
+    let v = [...cols[j]];
+    for(let k=0;k<j;k++){
+      const u=orth[k], d=v.reduce((s,vi,i)=>s+vi*u[i],0);
+      v=v.map((vi,i)=>vi-d*u[i]);
+    }
+    const n=Math.sqrt(v.reduce((s,vi)=>s+vi*vi,0))+1e-12;
+    orth.push(v.map(vi=>vi/n));
+  }
+  return tr(orth);
+}
+
+function getW(mode){
+  if(mode==='general') return {Wa1:RWa1,Wb1:RWb1,Wa2:RWa2,Wb2:RWb2};
+  if(mode==='ds') return {
+    Wa1:sinkhornRect(RWa1),Wb1:sinkhornRect(RWb1),
+    Wa2:sinkhornRect(RWa2),Wb2:sinkhornRect(RWb2)
+  };
+  return {
+    Wa1:gramSchmidt(RWa1),Wb1:gramSchmidt(RWb1),
+    Wa2:gramSchmidt(RWa2),Wb2:gramSchmidt(RWb2)
+  };
+}
+
+function ulinear(Wa,Wb,bx,be,x,e){
+  const xN = mv(Wa,x).map((v,i)=>v - mv(Wb,e)[i] + bx[i]);
+  const eR = mv(Wa,e).map((v,i)=>v + mv(Wb,x)[i] + be[i]);
+  return {x:xN, e:eR.map(v=>Math.max(1e-8,v))};
+}
+const emit = (x,e) => x.map((v,i)=>Math.sqrt(v*v+e[i]*e[i]));
+const landauer = (states,lm=0.1,bt=1.0) => {
+  let s=0;
+  for(let i=1;i<states.length;i++){
+    const len = Math.min(states[i-1].x.length, states[i].x.length);
+    for(let j=0;j<len;j++){
+      const dx=states[i].x[j]-states[i-1].x[j];
+      const de=states[i].e[j]-states[i-1].e[j];
+      s+=Math.sqrt(dx*dx+de*de);
+    }
+  }
+  return lm*bt*s;
+};
+
+// ── STATE ────────────────────────────────────────────────────
+let mode='general', inX=0.6, inE=0.15;
+let fwdStates=[], emitVal=0, landVal=0;
+
+function runFwd(){
+  const W=getW(mode);
+  const x0=[inX, inX*0.65];
+  const e0=[inE, Math.max(1e-8,inE*0.45)];
+  const s0={x:x0,e:e0};
+  const s1=ulinear(W.Wa1,W.Wb1,Rbx1,Rbe1,x0,e0);
+  const s2=ulinear(W.Wa2,W.Wb2,Rbx2,Rbe2,s1.x,s1.e);
+  const em=emit(s2.x,s2.e);
+  emitVal=em[0];
+  fwdStates=[s0,s1,s2,{x:em,e:[0]}];
+  landVal=landauer([s0,s1,s2]);
+  updateReadout();
+  updateNodeVals();
+  updatePacketProps();
+}
+
+function updateReadout(){
+  const s=fwdStates;
+  if(!s.length) return;
+  document.getElementById('r0').textContent=`x=${inX.toFixed(2)}  \u03b5=${inE.toFixed(2)}`;
+  document.getElementById('r1').textContent=
+    `x=[${s[1].x.map(v=>v.toFixed(2)).join(', ')}]`;
+  document.getElementById('r2').textContent=
+    `x=[${s[2].x.map(v=>v.toFixed(2)).join(', ')}]`;
+  document.getElementById('rE').textContent=`|z| = ${emitVal.toFixed(5)}`;
+  document.getElementById('rL').textContent=`${landVal.toFixed(5)}  (\u03bb=0.1 \u03b2=1)`;
+  const n0=Math.sqrt(inX*inX+inE*inE);
+  document.getElementById('gz').textContent=`${inX.toFixed(3)} + ${inE.toFixed(3)}i`;
+  document.getElementById('gn').textContent=`${n0.toFixed(5)}`;
+  document.getElementById('gf').textContent=
+    `\u03b5=${inE.toFixed(3)}  (${inE>0.4?'HIGH-CURV':inE>0.12?'MED-CURV':'LOW-CURV'})`;
+  document.getElementById('gm').textContent=mode.toUpperCase();
+}
+
+// ── SVG HELPERS ──────────────────────────────────────────────
+const NS='http://www.w3.org/2000/svg';
+const mkEl=(tag,attrs)=>{
+  const el=document.createElementNS(NS,tag);
+  Object.entries(attrs).forEach(([k,v])=>el.setAttribute(k,v));
+  return el;
+};
+
+// ── WARP FIELD ───────────────────────────────────────────────
+const WH=11, WV=8;
+let wH=[], wV=[];
+
+function initWarp(){
+  const g=document.getElementById('warpField');
+  g.innerHTML=''; wH=[]; wV=[];
+  for(let i=0;i<WH;i++){
+    const p=mkEl('path',{fill:'none',stroke:'#111','stroke-width':'1'});
+    g.appendChild(p); wH.push(p);
+  }
+  for(let i=0;i<WV;i++){
+    const p=mkEl('path',{fill:'none',stroke:'#111','stroke-width':'1'});
+    g.appendChild(p); wV.push(p);
+  }
+}
+
+function tickWarp(t){
+  const m=MODES[mode];
+  const amp=m.fAmp*(0.6+inE*1.8);
+  const fr=m.fFreq, sp=m.fSpd;
+  const seg=32;
+
+  wH.forEach((path,i)=>{
+    const by=55+(i/(WH-1))*495;
+    let d=`M 0 ${by}`;
+    for(let s=1;s<=seg;s++){
+      const px=(s/seg)*W;
+      let dy;
+      if(mode==='unitary'){
+        dy=Math.cos(px*fr*Math.PI+t*sp+i*0.7)*amp;
+      } else if(mode==='ds'){
+        dy=Math.sin(px*fr*Math.PI+t*sp+i*0.55)*amp*0.85;
+      } else {
+        dy=Math.sin(px*fr*Math.PI+t*sp+i*0.6)*amp*0.6
+          +Math.sin(px*fr*2.4*Math.PI+t*sp*1.6+i*1.2)*amp*0.4;
+      }
+      d+=` L ${px.toFixed(1)} ${(by+dy).toFixed(1)}`;
+    }
+    path.setAttribute('d',d);
+  });
+
+  wV.forEach((path,i)=>{
+    const bx=(i/(WV-1))*W;
+    const seg2=22;
+    let d=`M ${bx} 55`;
+    for(let s=1;s<=seg2;s++){
+      const py=55+(s/seg2)*495;
+      let dx;
+      if(mode==='unitary'){
+        dx=Math.sin(py*fr*Math.PI*0.7+t*sp+i*0.5)*amp*0.45;
+      } else if(mode==='ds'){
+        dx=Math.sin(py*fr*Math.PI*0.5+t*sp*0.9+i*0.4)*amp*0.45;
+      } else {
+        dx=Math.sin(py*fr*Math.PI+t*sp+i*0.8)*amp*0.45
+          +Math.cos(py*fr*1.8*Math.PI+t*sp*0.85+i*1.4)*amp*0.25;
+      }
+      d+=` L ${(bx+dx).toFixed(1)} ${py.toFixed(1)}`;
+    }
+    path.setAttribute('d',d);
+  });
+}
+
+// ── EDGES ────────────────────────────────────────────────────
+function initEdges(){
+  const g=document.getElementById('edgeGroup');
+  g.innerHTML='';
+  const ac=MODES[mode].accent;
+  EDGES.forEach((e,i)=>{
+    const d=`M ${e.f[0]} ${e.f[1]} C ${e.c1[0]} ${e.c1[1]}, ${e.c2[0]} ${e.c2[1]}, ${e.t[0]} ${e.t[1]}`;
+    g.appendChild(mkEl('path',{d,fill:'none',stroke:ac,'stroke-width':'0.7',opacity:'0.18',id:`edge${i}`}));
+  });
+}
+
+// ── NODES ────────────────────────────────────────────────────
+function initNodes(){
+  const g=document.getElementById('nodeGroup');
+  g.innerHTML='';
+  const ac=MODES[mode].accent;
+
+  const defs=[
+    ...NP.inp.map((p,i)=>({p,label:i===0?'z\u2080':'z\u2081',type:'inp',i})),
+    ...NP.hid.map((p,i)=>({p,label:'h'+i,type:'hid',i})),
+    ...NP.out.map((p,i)=>({p,label:'\u2299',type:'out',i})),
+  ];
+
+  defs.forEach(d=>{
+    const R=d.type==='out'?24:17;
+    const ng=mkEl('g',{});
+    // outer glow ring
+    ng.appendChild(mkEl('circle',{cx:d.p[0],cy:d.p[1],r:R+6,fill:'none',stroke:ac,'stroke-width':'1',opacity:'0.35',filter:'url(#fGlow)'}));
+    // body
+    ng.appendChild(mkEl('circle',{cx:d.p[0],cy:d.p[1],r:R,fill:'url(#nodeGrad)',stroke:ac,'stroke-width':'1',opacity:'0.95'}));
+    // top label
+    ng.appendChild(mkEl('text',{x:d.p[0],y:d.p[1]-5,'text-anchor':'middle','font-family':'Courier New','font-size':'11',fill:ac})).textContent=d.label;
+    // value sub-label
+    const vt=mkEl('text',{x:d.p[0],y:d.p[1]+9,'text-anchor':'middle','font-family':'Courier New','font-size':'7.5',fill:'#555',id:`nv-${d.type}-${d.i}`});
+    vt.textContent='...';
+    ng.appendChild(vt);
+    // spinning dashed ring on output
+    if(d.type==='out'){
+      ng.appendChild(mkEl('circle',{cx:d.p[0],cy:d.p[1],r:R+14,fill:'none',stroke:ac,'stroke-width':'0.5','stroke-dasharray':'5,12',opacity:'0.22',id:'spinRing'}));
+    }
+    g.appendChild(ng);
+  });
+
+  // UEmission label
+  const el=mkEl('text',{x:NP.out[0][0],y:NP.out[0][1]+46,'text-anchor':'middle','font-family':'Courier New','font-size':'8.5',fill:'#2d2d2d','letter-spacing':'1'});
+  el.textContent='UEmission \u2295 \u221a(x\u00b2+\u03b5\u00b2)';
+  g.appendChild(el);
+}
+
+function updateNodeVals(){
+  if(!fwdStates.length) return;
+  const [s0,s1,s2]=fwdStates;
+  NP.inp.forEach((_,i)=>{
+    const el=document.getElementById(`nv-inp-${i}`);
+    if(el) el.textContent=`${s0.x[i].toFixed(2)}+${s0.e[i].toFixed(2)}i`;
+  });
+  NP.hid.forEach((_,i)=>{
+    const el=document.getElementById(`nv-hid-${i}`);
+    if(el) el.textContent=`${s1.x[i].toFixed(2)}+${s1.e[i].toFixed(2)}i`;
+  });
+  const oel=document.getElementById('nv-out-0');
+  if(oel) oel.textContent=`|z|=${emitVal.toFixed(4)}`;
+}
+
+// ── PACKETS ──────────────────────────────────────────────────
+const PPE=2; // packets per edge
+let pkts=[];
+let emitFlashProg=0, emitRingEl=null, emitFlashEl=null;
+let spinAngle=0;
+
+function initPackets(){
+  const g=document.getElementById('packetGroup');
+  g.innerHTML=''; pkts=[];
+  const ac=MODES[mode].accent;
+  EDGES.forEach((e,ei)=>{
+    for(let p=0;p<PPE;p++){
+      const fc=mkEl('circle',{r:'2.5',fill:'#ff6b35',opacity:'0.65',filter:'url(#fFiber)'});
+      const mc=mkEl('circle',{r:'5',fill:ac,opacity:'0.85',filter:'url(#fPkt)'});
+      g.appendChild(fc); g.appendChild(mc);
+      pkts.push({
+        ei, prog:(p/PPE)+Math.random()*0.05,
+        spd:0.00025+Math.random()*0.00008,
+        mc, fc, layer:e.layer
+      });
+    }
+  });
+
+  const eg=document.getElementById('emitFx');
+  eg.innerHTML='';
+  emitFlashEl=mkEl('circle',{cx:NP.out[0][0],cy:NP.out[0][1],r:'0',fill:'none',stroke:'#fff','stroke-width':'2',opacity:'0',filter:'url(#fEmit)'});
+  emitRingEl=mkEl('circle',{cx:NP.out[0][0],cy:NP.out[0][1],r:'0',fill:MODES[mode].accent,opacity:'0'});
+  eg.appendChild(emitFlashEl); eg.appendChild(emitRingEl);
+}
+
+function updatePacketProps(){
+  if(!fwdStates.length) return;
+  const [s0,s1]=fwdStates;
+  const ac=MODES[mode].accent;
+  pkts.forEach(pk=>{
+    const edge=EDGES[pk.ei];
+    let xv,ev;
+    if(edge.layer===0){
+      xv=s0.x[edge.fi]||inX; ev=s0.e[edge.fi]||inE;
+    } else {
+      xv=s1.x[edge.hi]||0; ev=s1.e[edge.hi]||0.01;
+    }
+    const nrm=Math.sqrt(xv*xv+ev*ev);
+    pk.mc.setAttribute('r',(3+Math.min(9,nrm*9)).toFixed(1));
+    pk.mc.setAttribute('fill',ac);
+    pk.mc.setAttribute('opacity',(0.55+Math.abs(xv)*0.45).toFixed(2));
+    pk.fc.setAttribute('r',(1.5+Math.min(4.5,ev*5)).toFixed(1));
+    pk.fc.setAttribute('opacity',(0.4+ev*0.55).toFixed(2));
+  });
+}
+
+function bez(f,c1,c2,t2,prog){
+  const mt=1-prog;
+  return {
+    x:mt*mt*mt*f[0]+3*mt*mt*prog*c1[0]+3*mt*prog*prog*c2[0]+prog*prog*prog*t2[0],
+    y:mt*mt*mt*f[1]+3*mt*mt*prog*c1[1]+3*mt*prog*prog*c2[1]+prog*prog*prog*t2[1]
+  };
+}
+
+function tickPackets(dt){
+  const ac=MODES[mode].accent;
+  pkts.forEach(pk=>{
+    pk.prog=(pk.prog+pk.spd*dt)%1;
+    const e=EDGES[pk.ei];
+    const pos=bez(e.f,e.c1,e.c2,e.t,pk.prog);
+    pk.mc.setAttribute('cx',pos.x.toFixed(1));
+    pk.mc.setAttribute('cy',pos.y.toFixed(1));
+    const fpos=bez(e.f,e.c1,e.c2,e.t,Math.max(0,pk.prog-0.055));
+    pk.fc.setAttribute('cx',fpos.x.toFixed(1));
+    pk.fc.setAttribute('cy',fpos.y.toFixed(1));
+    // trigger emit flash when layer-1 packet arrives
+    if(e.layer===1 && pk.prog>0.96 && pk.prog<0.975) emitFlashProg=1;
+  });
+
+  // emit flash animation
+  if(emitFlashProg>0){
+    const r=(1-emitFlashProg)*55;
+    emitFlashEl.setAttribute('r',r.toFixed(1));
+    emitFlashEl.setAttribute('opacity',(emitFlashProg*0.75).toFixed(2));
+    emitFlashEl.setAttribute('stroke',ac);
+    emitRingEl.setAttribute('r',(emitFlashProg*18).toFixed(1));
+    emitRingEl.setAttribute('opacity',(emitFlashProg*0.4).toFixed(2));
+    emitRingEl.setAttribute('fill',ac);
+    emitFlashProg=Math.max(0,emitFlashProg-0.025);
+  }
+
+  // spin ring
+  spinAngle+=dt*0.028;
+  const sr=document.getElementById('spinRing');
+  if(sr) sr.setAttribute('stroke-dashoffset',(spinAngle%34).toFixed(1));
+}
+
+// ── MODE SWITCH ──────────────────────────────────────────────
+function setMode(m){
+  mode=m;
+  const cfg=MODES[m];
+  document.documentElement.style.setProperty('--accent',cfg.accent);
+  document.documentElement.style.setProperty('--accent-rgb',cfg.rgb);
+  document.querySelectorAll('.cbtn').forEach(b=>b.classList.toggle('on',b.dataset.m===m));
+  document.getElementById('modeDesc').textContent=cfg.desc;
+  initEdges(); initNodes(); initPackets();
+  runFwd();
+}
+
+// ── SEND BUTTON ──────────────────────────────────────────────
+function fireSend(){
+  const btn=document.getElementById('sendBtn');
+  btn.classList.remove('fire'); void btn.offsetWidth; btn.classList.add('fire');
+  runFwd();
+  // momentary flash on packets
+  pkts.forEach(pk=>{ pk.mc.setAttribute('opacity','1'); pk.fc.setAttribute('opacity','1'); });
+  setTimeout(updatePacketProps, 500);
+}
+
+// ── ANIMATION LOOP ───────────────────────────────────────────
+let prevT=0;
+function loop(ts){
+  const dt=Math.min(ts-prevT, 50); // cap dt at 50ms
+  prevT=ts;
+  tickWarp(ts/1000);
+  tickPackets(dt);
+  requestAnimationFrame(loop);
+}
+
+// ── EVENTS ───────────────────────────────────────────────────
+document.getElementById('xSlider').addEventListener('input',e=>{
+  inX=parseFloat(e.target.value);
+  document.getElementById('xVal').textContent=inX.toFixed(2);
+  runFwd(); updatePacketProps();
+});
+document.getElementById('eSlider').addEventListener('input',e=>{
+  inE=parseFloat(e.target.value);
+  document.getElementById('eVal').textContent=inE.toFixed(2);
+  runFwd(); updatePacketProps();
+});
+document.getElementById('sendBtn').addEventListener('click',fireSend);
+document.querySelectorAll('.cbtn').forEach(b=>b.addEventListener('click',()=>setMode(b.dataset.m)));
+
+// ── INIT ─────────────────────────────────────────────────────
+initWarp(); initEdges(); initNodes(); initPackets(); runFwd();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

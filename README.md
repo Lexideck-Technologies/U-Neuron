@@ -2,14 +2,16 @@
 
 **Foliated complex-valued neural architecture in U-space.**
 
-U-Neuron is a PyTorch library where every neuron is a complex-valued **U-number** `z = x + εi`, and every layer operation is algebraic multiplication in that number space. The infinitesimal fiber `ε` is not noise or a second channel — it is a **curvature selector** over a foliated family of information-exchange curves, grounded in the Landauer energy bound.
+U-Neuron is a PyTorch library where every neuron is a complex-valued **U-number** `z = x + ε α i`, stored as the pair `(x, m)` with `m = ε α`, and every layer operation is algebraic multiplication in that number space. The infinitesimal `ε` is fixed across the architecture; the **selector coordinate** `α`, which varies and trains, selects the curvature regime over a foliated family of information-exchange curves, grounded in the Landauer energy bound. In the code the stored pair appears as `(x, ε)`; see the notation note below.
 
 ```
-Re(z') = W_a @ x  − W_b @ ε  + bias_x
-Im(z') = W_a @ ε  + W_b @ x  + bias_ε
+Re(z') = W_a @ x  − W_b @ m  + bias_x
+Im(z') = W_a @ m  + W_b @ x  + bias_m
 ```
 
-The cross-terms (`W_b @ x → ε'` and `W_b @ ε → x'`) are mandatory — they couple classical activations to the informatic fiber through U-space algebra. Without them, you have two independent real networks stacked together. With them, the network learns which curvature regime each channel needs.
+The cross-terms (`W_b @ x → m'` and `W_b @ m → x'`) are mandatory — they couple classical activations to the informatic fiber through U-space algebra. Without them, you have two independent real networks stacked together. With them, the network learns which curvature regime each channel needs.
+
+**Note on notation.** The initial release stored the fiber channel directly as ε. A selector was later added to keep ε uniform across the architecture: the revised formalization writes every U-number as `z = x + ε α i`, with ε the fixed standardized infinitesimal and α the selector's geometric coordinate (`α_geom` in the manuscript), stored as the pair `(x, m)` with `m = ε α`. The revised formalization is equivalent to the code, where the stored fiber channel still appears as ε; the revision better reflects the selector's function for formal mathematics.
 
 ---
 
@@ -17,11 +19,11 @@ The cross-terms (`W_b @ x → ε'` and `W_b @ ε → x'`) are mandatory — they
 
 | Concept | What it means |
 |---------|---------------|
-| **U-space** | A number space `U = { z = x + εi }`, not a coordinate system. Operations are algebraic on U-numbers, not independent updates to separate scalars. |
-| **ε ≠ 0** | The infinitesimal fiber magnitude is clamped to ≥ 1e-8. Treating ε as zero collapses the foliation and destroys the topological structure. |
+| **U-space** | A number space `U = { z = x + ε α i }`, not a coordinate system. Operations are algebraic on U-numbers, not independent updates to separate scalars. |
+| **m ≠ 0** | The stored fiber magnitude `m = ε α` is clamped to ≥ 1e-8. Treating m as zero collapses the foliation and destroys the topological structure. |
 | **Complex multiplication** | `ULinear` performs `z' = w·z + b` where `w, z, b ∈ U`. The cross-coupling terms are the topology. |
-| **Emission boundary** | At the network output, `emit = \|z\| = √(x² + ε²)` collapses to a classical tensor. This must *never* happen inside a layer. |
-| **Landauer regularization** | State changes have a thermodynamic cost: `λ·β·Σ√((Δx)² + (Δε)² + 1e-8)` across layers, padded to prevent gradient explosions, derived from the physics of information erasure. |
+| **Emission boundary** | At the network output, `emit = \|z\| = √(x² + m²)` collapses to a classical tensor. This must *never* happen inside a layer. |
+| **Landauer regularization** | State changes have a thermodynamic cost: `λ·β·Σ√((Δx)² + (Δm)² + 1e-8)` across layers, padded to prevent gradient explosions, derived from the physics of information erasure. |
 
 ---
 

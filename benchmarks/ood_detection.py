@@ -131,7 +131,7 @@ def load_data(
 class UNeuronClassifier(nn.Module):
     """U-Neuron classifier: PCA features → 10-class softmax."""
 
-    def __init__(self, n_features: int, hidden: int = 128, lambda_reg: float = 0.01, constraint: str = "general") -> None:
+    def __init__(self, n_features: int, hidden: int = 128, lambda_reg: float = 0.01, constraint: str = "general", double_cover: bool = False, modrelu_threshold: float = 0.1) -> None:
         super().__init__()
         self.model = UModel(
             layer_sizes=[n_features, hidden, hidden, 10],
@@ -322,7 +322,8 @@ def run(args: argparse.Namespace) -> None:
 
     models_cfg = [
         ("U-Neuron", UNeuronClassifier(
-            args.n_pca, hidden=args.hidden, lambda_reg=args.lambda_reg, constraint=args.constraint
+            args.n_pca, hidden=args.hidden, lambda_reg=args.lambda_reg, constraint=args.constraint,
+            double_cover=args.double_cover, modrelu_threshold=args.modrelu_threshold,
         ), True),
         ("MC-Dropout MLP", MCDropoutMLP(args.n_pca, hidden=args.hidden), False),
     ]
@@ -469,6 +470,18 @@ def parse_args() -> argparse.Namespace:
         choices=["general", "unitary", "doubly_stochastic"],
         help="Weight manifold constraint (default: general)",
     )
+    p.add_argument(
+        "--double-cover",
+        action="store_true",
+        help="Run the 4-pi double-cover mode (signed eps; forces modReLU).",
+    )
+    p.add_argument(
+        "--modrelu-threshold",
+        type=float,
+        default=0.1,
+        help="modReLU gate threshold for --double-cover (default 0.1).",
+    )
+
     return p.parse_args()
 
 

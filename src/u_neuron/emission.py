@@ -25,7 +25,11 @@ def u_emit(z: UTensor) -> torch.Tensor:
             "constraint violated (foundational spec §11.3.3). "
             f"Current ULinear depth: {_ulinear_mod._DEPTH_COUNTER['value']}"
         )
-    result = torch.hypot(z.x, z.eps)
+    if UTensor.allow_signed_eps:
+        # Double-cover mode: guarded modulus (finite gradient at r = 0).
+        result = torch.sqrt(z.x ** 2 + z.eps ** 2 + 1e-12)
+    else:
+        result = torch.hypot(z.x, z.eps)
     logger.debug(
         "u_emit: shape=%s, result_range=[%.4f, %.4f]",
         z.shape, result.min().item(), result.max().item(),

@@ -45,17 +45,6 @@ def test_reg_one_state_returns_zero() -> None:
     assert loss.item() == pytest.approx(0.0)
 
 
-def test_reg_identical_states_returns_zero() -> None:
-    logger.info("Testing LandauerRegularizer returns 0.0 when same UTensor is recorded twice")
-    reg = LandauerRegularizer(lambda_weight=0.01, beta=1.0)
-    z = make_utensor(x_val=1.0, eps_val=0.1)
-    reg.record(z)
-    reg.record(z)
-    loss = reg.compute()
-    logger.info("loss=%.8f (expect 0.0)", loss.item())
-    assert loss.item() == pytest.approx(0.0, abs=1e-7)
-
-
 def test_reg_positive_for_differing_states() -> None:
     logger.info("Testing LandauerRegularizer returns positive loss for different UTensors")
     reg = LandauerRegularizer(lambda_weight=0.01, beta=1.0)

@@ -1,8 +1,12 @@
 """UTensor: the foundational U-space data structure.
 
 Encapsulates a U-number z = x + eps*i as two synchronized tensors of shape [B, C].
-The infinitesimal magnitude eps is clamped to >= EPS_FLOOR at all times to prevent
+The infinitesimal magnitude eps is clamped to >= EPS_FLOOR by default to prevent
 topological collapse of the foliated fiber structure.
+
+Double-cover mode (class flag `allow_signed_eps`, set by UModel(double_cover=True))
+lifts that clamp so eps may take either sign: the U-number's angle is then defined
+on the full circle, not only the upper semicircle (the 4*pi second sheet).
 """
 
 from __future__ import annotations
@@ -32,6 +36,12 @@ class UTensor:
     """
 
     EPS_FLOOR: ClassVar[float] = 1e-8
+
+    # Double-cover mode: when True the floor clamp is skipped and eps may take
+    # either sign (the 4*pi second sheet; angle defined on the full circle).
+    # This is process-global mode state: constructing a double-cover UModel
+    # switches the whole process into the cover.  Default stays one-sided.
+    allow_signed_eps: ClassVar[bool] = False
 
     def __init__(self, x: Tensor, eps: Tensor, *, _skip_eps_clamp: bool = False) -> None:
         # --- dimensionality check ---
@@ -71,7 +81,7 @@ class UTensor:
         # --- eps floor clamp ---
         # Skipped for internal pre-activation UTensors (ULinear output before
         # activation).  The activation's softplus ensures final positivity.
-        if not _skip_eps_clamp:
+        if not _skip_eps_clamp and not self.allow_signed_eps:
             n_below = (eps < self.EPS_FLOOR).sum().item()
             if n_below > 0:
                 logger.debug(

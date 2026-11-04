@@ -9,6 +9,11 @@ from u_neuron.utensor import UTensor
 
 logger = logging.getLogger(__name__)
 
+# Double-cover mode: priced origin crossing.  An element whose modulus passes
+# through the origin window between two recorded states is charged WRAP_PRICE.
+WRAP_R = 1e-3     # origin window radius
+WRAP_PRICE = 1.0  # price per wrapped element per recorded step
+
 
 class LandauerRegularizer:
     """Tracks UTensor states across layers and computes thermodynamic cost.
@@ -28,9 +33,15 @@ class LandauerRegularizer:
     Auto-resets after compute().
     """
 
-    def __init__(self, lambda_weight: float = 0.01, beta: float = 1.0) -> None:
+    def __init__(
+        self,
+        lambda_weight: float = 0.01,
+        beta: float = 1.0,
+        double_cover: bool = False,
+    ) -> None:
         self.lambda_weight = lambda_weight
         self.beta = beta
+        self.double_cover = double_cover
         self._states: list[UTensor] = []
 
     def reset(self) -> None:
@@ -45,12 +56,14 @@ class LandauerRegularizer:
             z.shape,
         )
 
-    @staticmethod
-    def _per_sample_norm(z: UTensor) -> torch.Tensor:
+    def _per_sample_norm(self, z: UTensor) -> torch.Tensor:
         """Compute per-sample U-space norm: ‖z‖ = √(Σ(x² + ε²)) over channels.
 
-        Returns shape [B].
+        Returns shape [B].  In double-cover mode the modulus is guarded
+        (+1e-12) so the gradient stays finite at an exact-zero state.
         """
+        if self.double_cover:
+            return torch.sqrt((z.x ** 2 + z.eps ** 2).sum(dim=-1) + 1e-12)
         return torch.sqrt((z.x ** 2 + z.eps ** 2).sum(dim=-1))
 
     def compute(self) -> torch.Tensor:
@@ -76,6 +89,13 @@ class LandauerRegularizer:
                 total = total + torch.sqrt(
                     (b.x - a.x) ** 2 + (b.eps - a.eps) ** 2 + 1e-8
                 ).mean()
+                if self.double_cover:
+                    # Priced origin crossing: an element whose modulus passes
+                    # through the origin window between recorded states.
+                    ra = torch.hypot(a.x, a.eps)
+                    rb = torch.hypot(b.x, b.eps)
+                    wrapped = ((ra < WRAP_R) | (rb < WRAP_R)).float().mean()
+                    total = total + WRAP_PRICE * wrapped
                 n_same += 1
             else:
                 # Different shapes: compare per-sample U-space norms

@@ -124,13 +124,15 @@ def _make_phantom_images(n: int, sz: int, rng: torch.Generator) -> torch.Tensor:
 class UNeuronReconstructor(nn.Module):
     """U-Neuron k-space reconstructor built on UModel."""
 
-    def __init__(self, n_input: int, n_output: int, hidden: int = 256, constraint: str = "general") -> None:
+    def __init__(self, n_input: int, n_output: int, hidden: int = 256, constraint: str = "general", double_cover: bool = False, modrelu_threshold: float = 0.1) -> None:
         super().__init__()
         self.model = UModel(
             layer_sizes=[n_input, hidden, hidden, n_output],
-            activation="crelu",
+            activation="modrelu" if double_cover else "crelu",
             lambda_reg=0.01,
             constraint=constraint,
+            modrelu_threshold=modrelu_threshold,
+            double_cover=double_cover,
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -262,7 +264,7 @@ def run(args: argparse.Namespace) -> None:
     test_loader = DataLoader(test_ds, batch_size=args.batch_size)
 
     models_cfg = [
-        ("U-Neuron", UNeuronReconstructor(n_input, n_output, hidden=args.hidden, constraint=args.constraint), True),
+        ("U-Neuron", UNeuronReconstructor(n_input, n_output, hidden=args.hidden, constraint=args.constraint, double_cover=args.double_cover, modrelu_threshold=args.modrelu_threshold), True),
         ("MLP Baseline", MLPBaseline(n_input, n_output, hidden=args.hidden), False),
     ]
 
@@ -340,6 +342,18 @@ def parse_args() -> argparse.Namespace:
         choices=["general", "unitary", "doubly_stochastic"],
         help="Weight manifold constraint (default: general)",
     )
+    p.add_argument(
+        "--double-cover",
+        action="store_true",
+        help="Run the 4-pi double-cover mode (signed eps; forces modReLU).",
+    )
+    p.add_argument(
+        "--modrelu-threshold",
+        type=float,
+        default=0.1,
+        help="modReLU gate threshold for --double-cover (default 0.1).",
+    )
+
     return p.parse_args()
 
 

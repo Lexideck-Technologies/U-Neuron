@@ -38,6 +38,18 @@ class UModel(nn.Module):
                      'standard' (unitary/d.s. require square matrices).
         lambda_reg:  Landauer regularizer weight λ (default 0.01).
         beta_reg:    Landauer regularizer inverse temperature β (default 1.0).
+        double_cover: Run the 4π double-cover mode: eps is signed (the floor
+                     and the one-sided clamps are lifted), the modulus is
+                     guarded for finite gradients at r = 0, and the
+                     regularizer adds the priced origin-crossing term.
+                     Requires activation='modrelu': CReLU's softplus maps
+                     every eps to a positive value and cannot carry the
+                     second sheet.  Sets the process-global mode flag
+                     UTensor.allow_signed_eps at construction.
+        modrelu_threshold: modReLU gate threshold (default 0.5).  The
+                     tomography benchmark dies at the default 0.5 (every
+                     state dies by layer 1 at init); 0.1 is the working
+                     value there.
 
     Raises:
         ValueError: If layer_sizes has fewer than 2 elements, or activation is unknown.
@@ -50,6 +62,8 @@ class UModel(nn.Module):
         constraint: str = "general",
         lambda_reg: float = 0.01,
         beta_reg: float = 1.0,
+        double_cover: bool = False,
+        modrelu_threshold: float = 0.5,
     ) -> None:
         super().__init__()
 
@@ -61,8 +75,18 @@ class UModel(nn.Module):
             raise ValueError(
                 f"Unknown activation {activation!r}. Choose from {_VALID_ACTIVATIONS}."
             )
+        if double_cover and activation != "modrelu":
+            raise ValueError(
+                "double_cover=True requires activation='modrelu': CReLU's "
+                "softplus maps every eps to a positive value and cannot "
+                "carry the signed second sheet."
+            )
 
         self.layer_sizes = layer_sizes
+        self.double_cover = double_cover
+        if double_cover:
+            # Process-global mode: U-numbers store signed eps from here on.
+            UTensor.allow_signed_eps = True
         self.activation_name = activation
         self.constraint = constraint
 
@@ -77,12 +101,14 @@ class UModel(nn.Module):
         ])
 
         # Activation function — registered as a submodule via nn.Module.__setattr__.
-        self.activation_fn: nn.Module = CReLU() if activation == "crelu" else modReLU()
+        self.activation_fn: nn.Module = (
+            CReLU() if activation == "crelu" else modReLU(threshold=modrelu_threshold)
+        )
 
         # Boundary collapse and thermodynamic regularizer.
         self.emission = UEmission()
         self.regularizer = LandauerRegularizer(
-            lambda_weight=lambda_reg, beta=beta_reg
+            lambda_weight=lambda_reg, beta=beta_reg, double_cover=double_cover
         )
 
         logger.debug(

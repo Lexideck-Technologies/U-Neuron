@@ -171,7 +171,7 @@ class UNeuronTomo(nn.Module):
     expectations in (-1, 1), bypassing the UEmission non-negativity constraint.
     """
 
-    def __init__(self, n_ops: int, hidden: int = 128, constraint: str = "unitary") -> None:
+    def __init__(self, n_ops: int, hidden: int = 128, constraint: str = "unitary", double_cover: bool = False, modrelu_threshold: float = 0.1) -> None:
         super().__init__()
         # Gradual expansion (n_ops → mid → hidden → hidden) avoids the
         # extreme fan-out that destabilises unconstrained first layers.
@@ -180,9 +180,11 @@ class UNeuronTomo(nn.Module):
         mid = max(n_ops * 4, 32)  # intermediate width
         self.backbone = UModel(
             layer_sizes=[n_ops, mid, hidden, hidden],
-            activation="crelu",
+            activation="modrelu" if double_cover else "crelu",
             constraint=constraint,
             lambda_reg=0.01,
+            modrelu_threshold=modrelu_threshold,
+            double_cover=double_cover,
         )
         self.head = nn.Linear(hidden, n_ops)
 
@@ -415,7 +417,7 @@ def run(args: argparse.Namespace) -> None:
     test_loader = DataLoader(test_ds, batch_size=args.batch_size)
 
     models_cfg = [
-        ("U-Neuron", UNeuronTomo(n_ops, hidden=args.hidden, constraint=args.constraint), True),
+        ("U-Neuron", UNeuronTomo(n_ops, hidden=args.hidden, constraint=args.constraint, double_cover=args.double_cover, modrelu_threshold=args.modrelu_threshold), True),
         ("MLP Baseline", MLPTomo(n_ops, hidden=args.hidden), False),
     ]
 
@@ -494,7 +496,7 @@ def run(args: argparse.Namespace) -> None:
             tr_ld = DataLoader(tr_ds, batch_size=args.batch_size, shuffle=True)
             te_ld = DataLoader(te_ds, batch_size=args.batch_size)
 
-            sweep_model = UNeuronTomo(n_ops, hidden=args.hidden, constraint=args.constraint)
+            sweep_model = UNeuronTomo(n_ops, hidden=args.hidden, constraint=args.constraint, double_cover=args.double_cover, modrelu_threshold=args.modrelu_threshold)
             sweep_model.to(device)
             sweep_opt = optim.Adam(sweep_model.parameters(), lr=args.lr)
             sweep_sched = optim.lr_scheduler.CosineAnnealingLR(
@@ -514,6 +516,12 @@ def run(args: argparse.Namespace) -> None:
             )
         print("=" * 60)
         print()
+
+    if args.double_cover:
+        from u_neuron.arcsine import arcsine_report
+        sample_x, _ = next(iter(test_loader))
+        print("\nArcsine witness (angle on the full circle, double cover):")
+        print(arcsine_report(un_model.backbone, sample_x))
 
     # --- Final summary ---
     print("=" * 60)
@@ -585,6 +593,18 @@ def parse_args() -> argparse.Namespace:
         choices=["general", "unitary", "doubly_stochastic"],
         help="Weight manifold constraint (default: unitary)",
     )
+    p.add_argument(
+        "--double-cover",
+        action="store_true",
+        help="Run the 4-pi double-cover mode (signed eps; forces modReLU).",
+    )
+    p.add_argument(
+        "--modrelu-threshold",
+        type=float,
+        default=0.1,
+        help="modReLU gate threshold for --double-cover (default 0.1).",
+    )
+
     return p.parse_args()
 
 

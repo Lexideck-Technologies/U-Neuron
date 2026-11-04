@@ -246,8 +246,13 @@ def test_gradient_flow_unitary() -> None:
     out = layer(z)
     loss = out.x.sum() + out.eps.sum()
     loss.backward()
-    assert layer.theta is not None
-    assert layer.theta.grad is not None
-    grad_sum = layer.theta.grad.abs().sum().item()
-    logger.info("unitary theta grad_abs_sum=%.6f", grad_sum)
-    assert grad_sum > 1e-12, f"theta gradient is zero: {grad_sum:.2e}"
+    # The unitary constraint is enforced by PyTorch's orthogonal
+    # parametrization; the raw parameter lives under
+    # parametrizations["weight_c"].original, and the per-block `theta`
+    # parameter no longer exists in the unitary mode.
+    original = layer.parametrizations["weight_c"].original
+    assert original is not None
+    assert original.grad is not None
+    grad_sum = original.grad.abs().sum().item()
+    logger.info("unitary weight_c grad_abs_sum=%.6f", grad_sum)
+    assert grad_sum > 1e-12, f"weight_c gradient is zero: {grad_sum:.2e}"

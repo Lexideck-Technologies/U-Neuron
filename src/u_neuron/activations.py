@@ -50,10 +50,11 @@ class CReLU(nn.Module):
 class modReLU(nn.Module):
     """Modulus ReLU for U-space tensors.
 
-    r = hypot(x, ε)
+    r = hypot(x, ε)  (guarded sqrt(x^2 + eps^2 + 1e-12) in double-cover mode)
     scale = relu(r - threshold) / (r + 1e-8)
     x' = scale * x
-    ε' = clamp(scale * ε, EPS_FLOOR)
+    ε' = clamp(scale * ε, EPS_FLOOR)          (one-sided mode)
+    ε' = clamp(scale * ε, -EPS_CEILING, EPS_CEILING)  (double-cover mode: signed)
     """
 
     def __init__(self, threshold: float = 0.5) -> None:
@@ -61,7 +62,13 @@ class modReLU(nn.Module):
         self.threshold = threshold
 
     def forward(self, z: UTensor) -> UTensor:
-        r = torch.hypot(z.x, z.eps)
+        if UTensor.allow_signed_eps:
+            # Double-cover mode: guarded modulus.  torch.hypot's backward is
+            # 0/0 at an exact-zero state; the +1e-12 inside keeps the gradient
+            # finite when a state sits at the origin.
+            r = torch.sqrt(z.x ** 2 + z.eps ** 2 + 1e-12)
+        else:
+            r = torch.hypot(z.x, z.eps)
         scale = F.relu(r - self.threshold) / (r + 1e-8)
 
         gating_fraction = (scale > 0).float().mean().item()
@@ -71,5 +78,9 @@ class modReLU(nn.Module):
         )
 
         x_out = scale * z.x
-        eps_out = torch.clamp(scale * z.eps, min=EPS_FLOOR)
+        if UTensor.allow_signed_eps:
+            # Double-cover mode: signed eps, symmetric ceiling guard only.
+            eps_out = torch.clamp(scale * z.eps, min=-EPS_CEILING, max=EPS_CEILING)
+        else:
+            eps_out = torch.clamp(scale * z.eps, min=EPS_FLOOR)
         return UTensor(x_out, eps_out)

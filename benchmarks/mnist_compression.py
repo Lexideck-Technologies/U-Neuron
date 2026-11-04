@@ -124,13 +124,15 @@ def load_mnist(
 class UNeuronClassifier(nn.Module):
     """U-Neuron classifier with configurable Landauer weight."""
 
-    def __init__(self, n_features: int, hidden: int = 256, lambda_reg: float = 0.01, constraint: str = "general") -> None:
+    def __init__(self, n_features: int, hidden: int = 256, lambda_reg: float = 0.01, constraint: str = "general", double_cover: bool = False, modrelu_threshold: float = 0.1) -> None:
         super().__init__()
         self.model = UModel(
             layer_sizes=[n_features, hidden, hidden, 10],
-            activation="crelu",
+            activation="modrelu" if double_cover else "crelu",
             lambda_reg=lambda_reg,
             constraint=constraint,
+            modrelu_threshold=modrelu_threshold,
+            double_cover=double_cover,
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -279,7 +281,7 @@ def run(args: argparse.Namespace) -> None:
             run_seed = args.seed + seed_i * 1000 + 1
             torch.manual_seed(run_seed)
 
-            model = UNeuronClassifier(args.n_pca, hidden=args.hidden, lambda_reg=lam, constraint=args.constraint)
+            model = UNeuronClassifier(args.n_pca, hidden=args.hidden, lambda_reg=lam, constraint=args.constraint, double_cover=args.double_cover, modrelu_threshold=args.modrelu_threshold)
             model.to(device)
             optimizer = optim.Adam(model.parameters(), lr=args.lr)
             scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs)
@@ -430,6 +432,18 @@ def parse_args() -> argparse.Namespace:
         choices=["general", "unitary", "doubly_stochastic"],
         help="Weight manifold constraint (default: general)",
     )
+    p.add_argument(
+        "--double-cover",
+        action="store_true",
+        help="Run the 4-pi double-cover mode (signed eps; forces modReLU).",
+    )
+    p.add_argument(
+        "--modrelu-threshold",
+        type=float,
+        default=0.1,
+        help="modReLU gate threshold for --double-cover (default 0.1).",
+    )
+
     return p.parse_args()
 
 

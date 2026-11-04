@@ -6,7 +6,7 @@ compression trajectory in U-Neuron hidden layers, compared to an
 unregularised U-Neuron and a standard MLP.
 
 Design:
-  - MNIST classification via PCA-reduced features (784 â†' 64 dims)
+  - MNIST classification via PCA-reduced features (784 â† 64 dims)
   - Sweep Î» âˆˆ {0, 0.001, 0.01, 0.1} for U-Neuron
   - After training each configuration, record:
       Â· Test classification accuracy
@@ -452,3 +452,4 @@ if __name__ == "__main__":
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(errors="replace")
     run(parse_args())
+

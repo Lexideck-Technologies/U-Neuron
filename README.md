@@ -148,6 +148,31 @@ model = UModel(layer_sizes=[4, 8, 8, 1], constraint="unitary")
 
 ---
 
+## The 4π Double Cover (opt-in)
+
+A single-cover U-Neuron keeps every U-number on one sheet: ε is clamped to ≥ 1e-8, so the selector can approach the origin but never cross it. The double-cover mode lifts that floor. ε becomes signed, rotation past π reaches the antipodal sheet, and the state closes on itself only after 4π — the spinor structure of U-space, made opt-in so the single-cover algebra stays the default everywhere else.
+
+- **Signed ε.** `UTensor.allow_signed_eps` removes the floor clamp; negative fiber values are legal states, not errors.
+- **modReLU activation.** CReLU's softplus cannot represent signed ε at all (it one-sheets by construction), so `UModel(double_cover=True)` requires `activation="modrelu"` (threshold configurable, default 0.1).
+- **Wrap pricing.** `LandauerRegularizer(double_cover=True)` prices crossing the origin: states in the wrap window (r < 1e-3) pay the exchange cost of the crossing itself.
+- **Finite-gradient guards.** At exact-zero states the modulus is internally floored by 1e-12 in modReLU, emission, and the norm branch, so gradients stay finite through r = 0.
+- **Arcsine witness.** `u_neuron/arcsine.py` reports the layer-phase distribution on the full circle — the diagnostic that tells a genuine double cover from a re-labelled single one.
+
+Single-cover behavior is unchanged when the mode is off.
+
+```python
+model = UModel(layer_sizes=[4, 8, 8, 1], double_cover=True, modrelu_threshold=0.1)
+```
+
+Every benchmark accepts the same switch on the command line:
+
+```bash
+python benchmarks/quantum_tomography.py --double-cover
+python benchmarks/quantum_tomography.py --double-cover --modrelu-threshold 0.1
+```
+
+---
+
 ## Architecture
 
 ```
@@ -157,6 +182,7 @@ src/u_neuron/
 ├── activations.py       CReLU (relu/tanh/gelu + softplus) and modReLU
 ├── emission.py          UEmission: boundary collapse √(x² + ε²)
 ├── regularization.py    LandauerRegularizer: thermodynamic state-change cost
+├── arcsine.py           arcsine witness: phase distribution on the full circle
 ├── norm.py              u_norm (√(x²+ε²)) and u_distance (Chebyshev L∞)
 └── model.py             UModel: stacked layers with training utilities
 ```
@@ -200,7 +226,7 @@ Invariants 5 and 6 are the key **anti-confabulation checks** — they prove the 
 
 ## Benchmarks
 
-Four industry-relevant benchmarks validate specific U-Neuron properties. All require only the base install; MNIST and CIFAR datasets download automatically on first run.
+Four industry-relevant benchmarks validate specific U-Neuron properties. All require only the base install; MNIST and CIFAR datasets download automatically on first run. Each accepts `--double-cover` and `--modrelu-threshold` to run the 4π double-cover mode (see above); the cover forces modReLU in place of CReLU.
 
 ```bash
 # Install torchvision first (required by benchmarks B and E)

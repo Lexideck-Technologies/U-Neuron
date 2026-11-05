@@ -171,6 +171,8 @@ python benchmarks/quantum_tomography.py --double-cover
 python benchmarks/quantum_tomography.py --double-cover --modrelu-threshold 0.1
 ```
 
+**Full-suite results (double cover vs one-sided baseline, same seeds and epochs).** The 18-run suite (tomography, k-space, MNIST Landauer sweep, OOD detection × general/unitary/doubly stochastic) completed under the double cover with exit code 0 throughout, no NaN and no divergence. Tomography fidelity rises under every constraint: 0.9864 → 0.9902 (general), 0.9768 → 0.9854 (unitary), 0.9777 → 0.9853 (doubly stochastic); the smoke-run pair (0.9854 vs 0.9768) is the unitary row. k-space reconstruction improves the same way, MSE falling 0.00972 → 0.00842 (general), 0.01522 → 0.00962 (unitary), 0.02095 → 0.00848 (doubly stochastic), so the double cover removes most of the one-sided deficit under the two constrained couplings. MNIST under the Landauer sweep loses about three points of accuracy at every λ and every constraint (one-sided 0.984–0.987 → double-cover 0.946–0.955) while the MLP control holds at 0.984–0.985: the signed-ε sheet costs classification accuracy at this depth. OOD detection is unchanged within run-to-run variation (AUROC on ε-mean 0.537/0.548/0.500 → 0.543/0.538/0.504, MLP control 0.559 → 0.562).
+
 ---
 
 ## Architecture
